@@ -96,8 +96,12 @@ flowcanvas canvas list
 # 2. 查看可用图片模型配置
 flowcanvas config list --type image
 
-# 3. 生成图片（会自动创建节点并等待完成）
-flowcanvas generate image <canvas_uuid> --prompt "赛博朋克城市夜景" --config <config_id>
+# 3a. 生成图片到指定节点（推荐：结果实时显示在桌面端）
+flowcanvas --json canvas get <uuid>   # 获取节点 ID
+flowcanvas generate image <uuid> --node <element_id> --prompt "赛博朋克城市夜景" --config <config_id>
+
+# 3b. 或不指定节点（图片保存到历史记录，不绑定节点）
+flowcanvas generate image <uuid> --prompt "赛博朋克城市夜景" --config <config_id>
 ```
 
 ### 2. 图片→视频工作流

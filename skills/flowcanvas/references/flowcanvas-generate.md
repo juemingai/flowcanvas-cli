@@ -37,10 +37,20 @@ flowcanvas generate image <canvas_uuid> \
   --config <config_id>
 
 # 可选参数
+  --node <element_id>        # 目标节点 ID（生成完成后将结果写入该节点，使桌面端实时显示）
   --model <model_key>        # 模型 key（默认使用配置中第一个模型）
   --aspect-ratio <ratio>     # 宽高比（如 1:1, 16:9, 9:16）
   --resolution <res>         # 分辨率（如 1024x1024）
   --count <n>                # 生成数量（1, 2, 或 4，默认 1）
+```
+
+**典型用法**（指定节点生成）：
+```bash
+# 1. 获取节点 ID
+flowcanvas --json canvas get <uuid>
+
+# 2. 生成并将结果绑定到指定节点（桌面端立即显示结果）
+flowcanvas generate image <uuid> --node <element_id> --prompt "..." --config <config_id>
 ```
 
 **输出**：
@@ -62,7 +72,8 @@ flowcanvas generate video <canvas_uuid> \
 
 # 可选参数
   --model <model_key>        # 模型 key
-  --from <image_node_id>     # 源图片节点 ID（自动创建视频节点+连接+生成）
+  --node <element_id>        # 目标节点 ID（生成完成后将结果写入该节点）
+  --from <image_node_id>     # 源图片节点 ID（自动创建视频节点+连接+生成，并自动绑定结果）
   --duration <seconds>       # 时长（秒）
   --resolution <res>         # 分辨率
   --ratio <ratio>            # 宽高比
@@ -87,6 +98,7 @@ flowcanvas generate audio <canvas_uuid> \
   --config <config_id>
 
 # 可选参数
+  --node <element_id>        # 目标节点 ID（生成完成后将结果写入该节点）
   --model <model_key>        # 模型 key
   --style <style>            # 音乐风格
   --title <title>            # 歌曲标题
