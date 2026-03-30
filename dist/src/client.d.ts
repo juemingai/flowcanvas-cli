@@ -92,6 +92,7 @@ export declare class FlowCanvasClient {
         resolution?: string;
         count?: number;
         canvas_id?: string;
+        image_urls?: string[];
     }): Promise<{
         task_id: string;
     }>;

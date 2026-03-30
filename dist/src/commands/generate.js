@@ -13,8 +13,10 @@ export function registerGenerateCommand(program, client) {
         .option("--aspect-ratio <ratio>", "Aspect ratio (e.g. 1:1, 16:9)")
         .option("--resolution <res>", "Resolution (e.g. 1024x1024)")
         .option("--count <n>", "Number of images (1, 2, or 4)", "1")
+        .option("--from <node_id>", "Reference image node IDs (repeat for multi-image fusion, e.g. --from id1 --from id2)", (val, prev) => [...prev, val], [])
         .action(async (canvasUuid, opts) => {
         const configId = parseInt(opts.config, 10);
+        const fromNodes = opts.from;
         // Resolve model key if not specified
         let modelKey = opts.model;
         if (!modelKey) {
@@ -26,11 +28,42 @@ export function registerGenerateCommand(program, client) {
             }
             modelKey = cfg.models[0].name;
         }
+        // Collect reference image URLs from --from nodes
+        let sourceImageUrls;
+        if (fromNodes.length > 0) {
+            const canvas = await client.getCanvasDetail(canvasUuid);
+            sourceImageUrls = [];
+            for (const nodeId of fromNodes) {
+                const sourceNode = canvas.elements.find((el) => el.id === nodeId);
+                if (!sourceNode) {
+                    outputError(`Source node ${nodeId} not found on canvas.`);
+                    process.exit(1);
+                }
+                const imageGen = sourceNode.imageGeneration;
+                const results = imageGen?.results;
+                const idx = imageGen?.currentResultIndex ?? 0;
+                const imageUrl = results?.[idx]?.url;
+                if (!imageUrl) {
+                    outputError(`Source node ${nodeId} has no image results. Generate an image first.`);
+                    process.exit(1);
+                }
+                sourceImageUrls.push(imageUrl);
+                outputInfo(`Reference image from node ${nodeId}: ${imageUrl}`);
+            }
+            const mode = fromNodes.length >= 2 ? "multi-image fusion" : "image-to-image";
+            outputInfo(`Mode: ${mode}`);
+        }
         // Auto-create image node if --node not specified
-        if (!opts.node) {
+        let targetNodeId = opts.node;
+        if (!targetNodeId) {
             const newNode = await client.addCanvasElement(canvasUuid, "image-generation");
             outputInfo(`Created image node: ${newNode.id}`);
-            opts.node = newNode.id;
+            targetNodeId = newNode.id;
+        }
+        // Create edges from source nodes to target node
+        for (const sourceNodeId of fromNodes) {
+            await client.addCanvasEdge(canvasUuid, sourceNodeId, targetNodeId);
+            outputInfo(`Connected ${sourceNodeId} → ${targetNodeId}`);
         }
         outputInfo("Submitting image generation task...");
         const { task_id } = await client.generateImageAsync({
@@ -41,6 +74,7 @@ export function registerGenerateCommand(program, client) {
             resolution: opts.resolution,
             count: parseInt(opts.count, 10),
             canvas_id: canvasUuid,
+            image_urls: sourceImageUrls,
         });
         outputInfo(`Task ID: ${task_id} — waiting for completion...`);
         const result = await pollTask(client, task_id, {
@@ -58,7 +92,7 @@ export function registerGenerateCommand(program, client) {
             if (generated && generated.length > 0) {
                 const canvas = await client.getCanvasDetail(canvasUuid);
                 const updatedElements = canvas.elements.map((el) => {
-                    if (el.id === opts.node) {
+                    if (el.id === targetNodeId) {
                         return {
                             ...el,
                             imageGeneration: {
@@ -67,6 +101,18 @@ export function registerGenerateCommand(program, client) {
                                 taskId: task_id,
                                 results: generated.map((img) => ({ id: img.id, url: img.url, filename: img.filename })),
                                 currentResultIndex: 0,
+                                ...(sourceImageUrls && sourceImageUrls.length > 0 ? {
+                                    params: {
+                                        ...(el.imageGeneration?.params ?? {}),
+                                        referenceImages: sourceImageUrls.map((url, i) => ({
+                                            id: `ref-${i}`,
+                                            type: "inherited",
+                                            data: url,
+                                            filename: url.split("/").pop() ?? "image.jpg",
+                                            sourceNodeId: fromNodes[i],
+                                        })),
+                                    },
+                                } : {}),
                             },
                         };
                     }
@@ -74,11 +120,11 @@ export function registerGenerateCommand(program, client) {
                 });
                 await client.updateCanvasElements(canvasUuid, updatedElements);
                 if (!isJsonMode())
-                    outputInfo(`Results attached to node ${opts.node}`);
+                    outputInfo(`Results attached to node ${targetNodeId}`);
             }
         }
         if (isJsonMode()) {
-            outputJson({ nodeId: opts.node, ...result });
+            outputJson({ nodeId: targetNodeId, ...result });
         }
         else {
             outputSuccess("Image generation completed! Check FlowCanvas desktop app.");
@@ -91,7 +137,8 @@ export function registerGenerateCommand(program, client) {
         .requiredOption("--config <config_id>", "Config ID (from `flowcanvas config list --type video`)")
         .option("--prompt <prompt>", "Video generation prompt")
         .option("--model <model_key>", "Model key (defaults to first available model)")
-        .option("--from <image_node_id>", "Source image node ID — auto-creates video node, connects, and generates (shortcut for image-to-video)")
+        .option("--from <image_node_id>", "First frame image node ID — auto-creates video node, connects, and generates")
+        .option("--last-frame <image_node_id>", "Last frame image node ID — use with --from for first/last frame video generation")
         .option("--node <element_id>", "Target node ID to attach results to")
         .option("--duration <seconds>", "Duration in seconds")
         .option("--resolution <res>", "Resolution")
@@ -108,42 +155,66 @@ export function registerGenerateCommand(program, client) {
             }
             modelKey = cfg.models[0].name;
         }
-        // --from shortcut: auto-create video node + connect + generate
+        // --from / --last-frame: auto-create video node + connect + generate
         let targetNodeId = opts.node;
         let sourceImageUrls;
-        if (opts.from) {
-            // Get source node's image URL for image-to-video
+        if (opts.from || opts.lastFrame) {
             const canvas = await client.getCanvasDetail(canvasUuid);
-            const sourceNode = canvas.elements.find((el) => el.id === opts.from);
-            if (sourceNode) {
+            sourceImageUrls = [];
+            // First frame (--from)
+            if (opts.from) {
+                const sourceNode = canvas.elements.find((el) => el.id === opts.from);
+                if (!sourceNode) {
+                    outputError(`Source node ${opts.from} not found on canvas.`);
+                    process.exit(1);
+                }
                 const imageGen = sourceNode.imageGeneration;
                 const results = imageGen?.results;
                 const idx = imageGen?.currentResultIndex ?? 0;
                 const imageUrl = results?.[idx]?.url;
-                if (imageUrl) {
-                    sourceImageUrls = [imageUrl];
-                    outputInfo(`Using source image: ${imageUrl}`);
-                }
-                else {
+                if (!imageUrl) {
                     outputError(`Source node ${opts.from} has no image results. Generate an image first.`);
                     process.exit(1);
                 }
+                sourceImageUrls.push(imageUrl);
+                outputInfo(`First frame from node ${opts.from}: ${imageUrl}`);
             }
-            else {
-                outputError(`Source node ${opts.from} not found on canvas.`);
-                process.exit(1);
+            // Last frame (--last-frame)
+            if (opts.lastFrame) {
+                const lastFrameNode = canvas.elements.find((el) => el.id === opts.lastFrame);
+                if (!lastFrameNode) {
+                    outputError(`Last frame node ${opts.lastFrame} not found on canvas.`);
+                    process.exit(1);
+                }
+                const imageGen = lastFrameNode.imageGeneration;
+                const results = imageGen?.results;
+                const idx = imageGen?.currentResultIndex ?? 0;
+                const imageUrl = results?.[idx]?.url;
+                if (!imageUrl) {
+                    outputError(`Last frame node ${opts.lastFrame} has no image results. Generate an image first.`);
+                    process.exit(1);
+                }
+                sourceImageUrls.push(imageUrl);
+                outputInfo(`Last frame from node ${opts.lastFrame}: ${imageUrl}`);
             }
-            outputInfo(`Creating video node and connecting to ${opts.from}...`);
+            const mode = sourceImageUrls.length === 2 ? "first/last frame" : "image-to-video";
+            outputInfo(`Mode: ${mode}`);
+            outputInfo("Creating video node...");
             const videoNode = await client.addCanvasElement(canvasUuid, "video-generation");
             outputInfo(`Created video node: ${videoNode.id}`);
-            await client.addCanvasEdge(canvasUuid, opts.from, videoNode.id);
-            outputInfo(`Connected ${opts.from} → ${videoNode.id}`);
-            // Auto-use the newly created node as target for result attachment
+            if (opts.from) {
+                await client.addCanvasEdge(canvasUuid, opts.from, videoNode.id);
+                outputInfo(`Connected ${opts.from} → ${videoNode.id}`);
+            }
+            if (opts.lastFrame) {
+                await client.addCanvasEdge(canvasUuid, opts.lastFrame, videoNode.id);
+                outputInfo(`Connected ${opts.lastFrame} → ${videoNode.id}`);
+            }
             if (!targetNodeId)
                 targetNodeId = videoNode.id;
         }
-        // Auto-create video node if neither --from nor --node was specified
-        if (!opts.from && !targetNodeId) {
+        // Auto-create video node if neither --from/--last-frame nor --node was specified
+        if (!opts.from && !opts.lastFrame && !targetNodeId) {
             const newNode = await client.addCanvasElement(canvasUuid, "video-generation");
             outputInfo(`Created video node: ${newNode.id}`);
             targetNodeId = newNode.id;
@@ -185,13 +256,15 @@ export function registerGenerateCommand(program, client) {
                                 taskId: task_id,
                                 results: generated.map((v) => ({ id: v.id, url: v.url, filename: v.filename })),
                                 currentResultIndex: 0,
-                                // Store reference images so frontend shows them in the 首帧/尾帧 panel
                                 params: {
                                     ...(existingVideoGen.params ?? {}),
-                                    ...(sourceImageUrls ? {
-                                        referenceImages: sourceImageUrls.map((url) => ({
+                                    ...(sourceImageUrls && sourceImageUrls.length > 0 ? {
+                                        referenceImages: sourceImageUrls.map((url, i) => ({
+                                            id: `ref-${i}`,
+                                            type: "inherited",
                                             data: url,
                                             filename: url.split("/").pop() ?? "image.jpg",
+                                            sourceNodeId: i === 0 ? opts.from : opts.lastFrame,
                                         })),
                                     } : {}),
                                 },

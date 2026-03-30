@@ -89,6 +89,18 @@ export class FlowCanvasClient {
             form.append("count", String(params.count));
         if (params.canvas_id)
             form.append("canvas_id", params.canvas_id);
+        // Attach reference images for image-to-image / multi-image fusion
+        if (params.image_urls && params.image_urls.length > 0) {
+            for (const url of params.image_urls) {
+                const fullUrl = url.startsWith("http") ? url : `${this.baseUrl}${url}`;
+                const imgRes = await fetch(fullUrl);
+                if (!imgRes.ok)
+                    throw new Error(`Failed to fetch reference image: ${fullUrl}`);
+                const blob = await imgRes.blob();
+                const filename = url.split("/").pop() ?? "image.jpg";
+                form.append("images", blob, filename);
+            }
+        }
         const res = await fetch(`${this.baseUrl}/api/image/generate-async`, { method: "POST", body: form });
         if (!res.ok) {
             const err = await res.text();

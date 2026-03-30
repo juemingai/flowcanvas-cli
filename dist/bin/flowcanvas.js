@@ -36,12 +36,12 @@ program
     .name("flowcanvas")
     .description("FlowCanvas CLI — operate FlowCanvas canvases from the command line")
     .version(version)
-    .option("--json", "Output in JSON format (agent-friendly)")
+    .option("--pretty", "Output in human-readable format (tables and colors)")
     .option("--server <url>", "FlowCanvas server URL", "http://localhost:8000")
     .hook("preAction", (thisCommand) => {
     const opts = thisCommand.opts();
-    if (opts.json)
-        setJsonMode(true);
+    if (opts.pretty)
+        setJsonMode(false);
 });
 registerHealthCommand(program, clientProxy);
 registerCanvasCommand(program, clientProxy);

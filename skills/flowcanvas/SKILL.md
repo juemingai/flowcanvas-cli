@@ -115,6 +115,31 @@ flowcanvas --json generate image <uuid> --prompt "赛博朋克城市" --config <
 flowcanvas generate video <uuid> --from <nodeId> --prompt "城市漫游镜头" --config <video_config_id>
 ```
 
+### 5. 多图融合（多个图片节点 → 新图片节点）
+
+```bash
+# 多次传入 --from，自动创建目标节点 + 连接 + 以多图融合模式生成
+flowcanvas generate image <uuid> \
+  --from <image_node_id_1> \
+  --from <image_node_id_2> \
+  --prompt "融合两个角色风格" \
+  --config <config_id>
+# 后端自动检测：images >= 2 张 → 进入"多图融合"模式
+```
+
+### 6. 首尾帧视频（两个图片节点 → 视频节点）
+
+```bash
+# --from 指定首帧节点，--last-frame 指定尾帧节点
+# 自动创建视频节点 + 连接两个源节点 + 以首尾帧模式生成
+flowcanvas generate video <uuid> \
+  --from <first_frame_node_id> \
+  --last-frame <last_frame_node_id> \
+  --prompt "角色从A姿势变换到B姿势" \
+  --config <config_id>
+# 后端自动检测：images == 2 张 → 进入"首尾帧生成"模式
+```
+
 ### 3. 音频生成（一步完成）
 
 ```bash
