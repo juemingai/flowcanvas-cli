@@ -101,9 +101,15 @@ export function registerGenerateCommand(program, client) {
                                 taskId: task_id,
                                 results: generated.map((img) => ({ id: img.id, url: img.url, filename: img.filename })),
                                 currentResultIndex: 0,
-                                ...(sourceImageUrls && sourceImageUrls.length > 0 ? {
-                                    params: {
-                                        ...(el.imageGeneration?.params ?? {}),
+                                params: {
+                                    ...(el.imageGeneration?.params ?? {}),
+                                    prompt: opts.prompt,
+                                    configId: configId,
+                                    modelKey: modelKey,
+                                    aspectRatio: opts.aspectRatio || "1:1",
+                                    resolution: opts.resolution || "2K",
+                                    count: parseInt(opts.count || "1", 10),
+                                    ...(sourceImageUrls && sourceImageUrls.length > 0 ? {
                                         referenceImages: sourceImageUrls.map((url, i) => ({
                                             id: `ref-${i}`,
                                             type: "inherited",
@@ -111,8 +117,8 @@ export function registerGenerateCommand(program, client) {
                                             filename: url.split("/").pop() ?? "image.jpg",
                                             sourceNodeId: fromNodes[i],
                                         })),
-                                    },
-                                } : {}),
+                                    } : {}),
+                                },
                             },
                         };
                     }
@@ -258,6 +264,15 @@ export function registerGenerateCommand(program, client) {
                                 currentResultIndex: 0,
                                 params: {
                                     ...(existingVideoGen.params ?? {}),
+                                    prompt: opts.prompt || "",
+                                    configId: configId,
+                                    modelKey: modelKey,
+                                    ratio: opts.ratio || "adaptive",
+                                    resolution: opts.resolution || "720p",
+                                    duration: opts.duration ? parseInt(opts.duration, 10) : 5,
+                                    generateAudio: true,
+                                    promptOptimizer: true,
+                                    count: 1,
                                     ...(sourceImageUrls && sourceImageUrls.length > 0 ? {
                                         referenceImages: sourceImageUrls.map((url, i) => ({
                                             id: `ref-${i}`,
@@ -349,6 +364,15 @@ export function registerGenerateCommand(program, client) {
                                 taskId: task_id,
                                 results: generated.map((a) => ({ id: a.id, url: a.url, filename: a.filename })),
                                 currentResultIndex: 0,
+                                params: {
+                                    ...(el.audioGeneration?.params ?? {}),
+                                    prompt: opts.prompt,
+                                    configId: configId,
+                                    modelKey: modelKey,
+                                    style: opts.style || "",
+                                    title: opts.title || "",
+                                    instrumental: opts.instrumental === true,
+                                },
                             },
                         };
                     }
