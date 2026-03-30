@@ -74,6 +74,7 @@ Canvas (画布)
 | `flowcanvas node delete <uuid> <id>` | 删除节点 | [flowcanvas-node](references/flowcanvas-node.md) |
 | `flowcanvas edge add <uuid> <src> <tgt>` | 连接两个节点 | [flowcanvas-node](references/flowcanvas-node.md) |
 | `flowcanvas config list` | 列出可用模型配置 | [flowcanvas-generate](references/flowcanvas-generate.md) |
+| `flowcanvas config params <config_id>` | 查看模型支持的参数选项 | [flowcanvas-generate](references/flowcanvas-generate.md) |
 | `flowcanvas generate image <uuid>` | 生成图片 | [flowcanvas-generate](references/flowcanvas-generate.md) |
 | `flowcanvas generate video <uuid>` | 生成视频 | [flowcanvas-generate](references/flowcanvas-generate.md) |
 | `flowcanvas generate audio <uuid>` | 生成音频 | [flowcanvas-generate](references/flowcanvas-generate.md) |
@@ -87,7 +88,7 @@ Canvas (画布)
 
 ## 核心场景
 
-### 1. 图片生成
+### 1. 图片生成（一步完成）
 
 ```bash
 # 1. 确认目标画布
@@ -96,57 +97,52 @@ flowcanvas canvas list
 # 2. 查看可用图片模型配置
 flowcanvas config list --type image
 
-# 3a. 生成图片到指定节点（推荐：结果实时显示在桌面端）
-flowcanvas --json canvas get <uuid>   # 获取节点 ID
-flowcanvas generate image <uuid> --node <element_id> --prompt "赛博朋克城市夜景" --config <config_id>
+# 3. （可选）查看模型支持的参数，了解有哪些合法值可传
+flowcanvas config params <config_id>
 
-# 3b. 或不指定节点（图片保存到历史记录，不绑定节点）
+# 4. 一步生成（自动创建节点 + 生成 + 绑定结果，桌面端自动刷新）
 flowcanvas generate image <uuid> --prompt "赛博朋克城市夜景" --config <config_id>
 ```
 
-### 2. 图片→视频工作流
-
-**快捷方式（推荐）**：使用 `--from` 参数一步完成创建视频节点 + 连接 + 生成
+### 2. 图片→视频工作流（两步）
 
 ```bash
-# 1. 生成图片
-flowcanvas generate image <uuid> --prompt "赛博朋克城市" --config <image_config_id>
+# Step 1: 生成图片（自动创建节点），用 --json 获取 nodeId
+flowcanvas --json generate image <uuid> --prompt "赛博朋克城市" --config <image_config_id>
+# 输出示例: { "nodeId": "abc-123", "status": "completed", ... }
 
-# 2. 获取图片节点 ID
-flowcanvas --json canvas get <uuid>
-
-# 3. 一步完成图生视频（自动创建视频节点 + 连接 + 生成）
-flowcanvas generate video <uuid> --from <image_node_id> --prompt "城市漫游镜头" --config <video_config_id>
+# Step 2: 用 --from 一步完成图生视频（自动创建视频节点 + 连接 + 生成）
+flowcanvas generate video <uuid> --from <nodeId> --prompt "城市漫游镜头" --config <video_config_id>
 ```
 
-**分步方式**（手动控制每一步）：
+### 3. 音频生成（一步完成）
 
 ```bash
-flowcanvas node add <uuid> video-generation
-flowcanvas edge add <uuid> <image_node_id> <video_node_id>
-flowcanvas generate video <uuid> --prompt "城市漫游镜头" --config <video_config_id>
+flowcanvas generate audio <uuid> --prompt "欢快的电子舞曲" --config <audio_config_id>
 ```
 
-### 3. 多节点工作流
+### 4. 分步手动控制（高级用法）
+
+如需先规划画布结构再生成，可使用底层命令：
 
 ```bash
-# 创建多个图片节点
-flowcanvas node add <uuid> image-generation
-flowcanvas node add <uuid> image-generation
+# 添加空节点
 flowcanvas node add <uuid> image-generation
 
 # 查看节点 ID
 flowcanvas --json canvas get <uuid>
 
-# 分别生成不同风格图片
-flowcanvas generate image <uuid> --prompt "日式风格城堡" --config <id>
-flowcanvas generate image <uuid> --prompt "哥特式教堂" --config <id>
+# 连接节点
+flowcanvas edge add <uuid> <image_id> <video_id>
+
+# 生成并绑定到指定节点
+flowcanvas generate image <uuid> --node <element_id> --prompt "..." --config <id>
 ```
 
 ## 其他规则
 
-- FlowCanvas 桌面端每 2 秒自动刷新，用户能实时看到操作结果，无需额外"打开"画布
+- FlowCanvas 桌面端每 5 秒自动刷新，用户能实时看到操作结果，无需手动刷新
 - FlowCanvas 未启动时 CLI 会返回友好错误，提示用户先启动桌面端
 - 操作前建议用 `flowcanvas canvas get <uuid>` 确认画布当前状态
-- `generate` 命令会自动等待生成完成（最长 5 分钟），无需手动轮询
-- 使用 `--json` 输出时更容易解析节点 ID 等信息
+- `generate` 命令会自动等待生成完成（最长 10 分钟），无需手动轮询
+- 使用 `--json` 输出时，结果包含 `nodeId` 字段，方便链式调用
