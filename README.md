@@ -47,6 +47,7 @@ flowcanvas generate image <canvas_uuid> --prompt "cyberpunk city" --config <conf
 | `flowcanvas node delete <uuid> <id>` | Delete a node |
 | `flowcanvas edge add <uuid> <src> <tgt>` | Connect two nodes |
 | `flowcanvas config list [--type]` | List model configurations |
+| `flowcanvas config params <config_id>` | Show model's supported parameters and valid values |
 | `flowcanvas generate image <uuid>` | Generate an image |
 | `flowcanvas generate video <uuid>` | Generate a video (supports `--from` for image-to-video) |
 | `flowcanvas generate audio <uuid>` | Generate audio |
