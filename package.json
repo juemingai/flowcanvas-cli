@@ -1,0 +1,46 @@
+{
+  "name": "@flowcanvas/cli",
+  "version": "1.0.0",
+  "description": "FlowCanvas CLI — operate FlowCanvas canvases from the command line, built for humans and AI agents",
+  "type": "module",
+  "main": "dist/bin/flowcanvas.js",
+  "bin": {
+    "flowcanvas": "dist/bin/flowcanvas.js"
+  },
+  "files": [
+    "dist/**",
+    "skills/**"
+  ],
+  "skills": {
+    "flowcanvas": "./skills/flowcanvas/SKILL.md"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "flowcanvas",
+    "cli",
+    "ai",
+    "canvas",
+    "image-generation",
+    "video-generation",
+    "audio-generation"
+  ],
+  "author": "FlowCanvas",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/juemingai/flowcanvas.git",
+    "directory": "flowcanvas-cli"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "cli-table3": "^0.6.5",
+    "commander": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.0"
+  }
+}
