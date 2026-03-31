@@ -1,6 +1,6 @@
 {
   "name": "@flowcanvas/cli",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "FlowCanvas CLI — operate FlowCanvas canvases from the command line, built for humans and AI agents",
   "type": "module",
   "main": "dist/bin/flowcanvas.js",
