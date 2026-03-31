@@ -6,10 +6,10 @@
 
 ```bash
 flowcanvas health
-# ✓ FlowCanvas is running
-
-flowcanvas --json health
 # {"status": "ok"}
+
+flowcanvas --pretty health
+# ✓ FlowCanvas is running
 ```
 
 ## flowcanvas canvas list
@@ -18,10 +18,10 @@ flowcanvas --json health
 
 ```bash
 flowcanvas canvas list
-# 表格输出：Name | UUID | Nodes | Updated | Favorite
+# JSON 数组示例（默认输出）：
 
-flowcanvas --json canvas list
-# JSON 数组示例：
+flowcanvas --pretty canvas list
+# 表格输出：Name | UUID | Nodes | Updated | Favorite
 # [
 #   {
 #     "id": 1,
@@ -37,7 +37,7 @@ flowcanvas --json canvas list
 # ]
 ```
 
-**Agent 用法**：使用 `--json` 获取结构化数据，按 `name` 模糊匹配用户提到的画布名称。`thumbnail_url` 字段可能为 `null`，匹配时勿依赖此字段。
+**Agent 用法**：默认输出结构化 JSON 数据，按 `name` 模糊匹配用户提到的画布名称。`thumbnail_url` 字段可能为 `null`，匹配时勿依赖此字段。
 
 ## flowcanvas canvas create
 
@@ -45,10 +45,10 @@ flowcanvas --json canvas list
 
 ```bash
 flowcanvas canvas create "赛博朋克项目"
-# ✓ Created canvas "赛博朋克项目" (UUID: xxx-xxx-xxx)
+# {"uuid": "xxx-xxx-xxx", "name": "赛博朋克项目"}
 
-flowcanvas --json canvas create "新画布"
-# {"uuid": "xxx-xxx-xxx", "name": "新画布"}
+flowcanvas --pretty canvas create "赛博朋克项目"
+# ✓ Created canvas "赛博朋克项目" (UUID: xxx-xxx-xxx)
 ```
 
 **规则**：禁止使用 "Untitled Canvas" 或空名称。创建前必须询问用户画布名称。
@@ -59,10 +59,10 @@ flowcanvas --json canvas create "新画布"
 
 ```bash
 flowcanvas canvas get <uuid>
-# 表格输出：ID | Type | Position | State | Results | Prompt
+# JSON 数组，每个元素包含（默认输出）：
 
-flowcanvas --json canvas get <uuid>
-# JSON 数组，每个元素包含：
+flowcanvas --pretty canvas get <uuid>
+# 表格输出：ID | Type | Position | State | Results | Prompt
 # {
 #   "id": "node-uuid",
 #   "type": "image-generation",
@@ -74,4 +74,4 @@ flowcanvas --json canvas get <uuid>
 # }
 ```
 
-**Agent 用法**：使用 `--json` 获取节点 ID 和 label，用于后续的连接（edge add）或删除（node delete）操作。
+**Agent 用法**：默认输出 JSON，获取节点 ID 和 label，用于后续的连接（edge add）或删除（node delete）操作。

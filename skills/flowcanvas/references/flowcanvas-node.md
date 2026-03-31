@@ -23,8 +23,8 @@ flowcanvas node add <canvas_uuid> video-generation --from <image_node_id>
 flowcanvas node add <canvas_uuid> audio-generation --from <image_node_id>
 flowcanvas node add <canvas_uuid> image-generation --from <text_node_id>
 
-# JSON 输出
-flowcanvas --json node add <canvas_uuid> video-generation --from <image_node_id>
+# JSON 输出（默认）
+flowcanvas node add <canvas_uuid> video-generation --from <image_node_id>
 # {
 #   "id": "new-node-uuid",
 #   "type": "video-generation",
@@ -78,17 +78,17 @@ flowcanvas node delete <canvas_uuid> <element_id>
 
 ```bash
 flowcanvas edge add <canvas_uuid> <source_id> <target_id>
-# ✓ Connected source-id → target-id (edge: edge-uuid)
-
-flowcanvas --json edge add <canvas_uuid> <source_id> <target_id>
 # {"id": "edge-uuid", "sourceId": "source-id", "targetId": "target-id"}
+
+flowcanvas --pretty edge add <canvas_uuid> <source_id> <target_id>
+# ✓ Connected source-id → target-id (edge: edge-uuid)
 ```
 
 **典型用法**：将图片节点连接到视频节点，实现图生视频工作流。
 
 ```bash
 # 1. 先查看画布获取节点 ID
-flowcanvas --json canvas get <uuid>
+flowcanvas canvas get <uuid>
 
 # 2. 连接图片节点到视频节点
 flowcanvas edge add <uuid> <image_node_id> <video_node_id>

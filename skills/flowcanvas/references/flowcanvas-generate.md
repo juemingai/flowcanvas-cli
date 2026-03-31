@@ -5,10 +5,10 @@
 **CRITICAL — 生成内容前，必须按以下 3 步操作，禁止凭感觉填写参数值：**
 
 ```
-Step 1: flowcanvas --json config list --type <image|video|audio>
+Step 1: flowcanvas config list --type <image|video|audio>
         → 获取 config_id 和可用 model_key
 
-Step 2: flowcanvas --json config params <config_id>
+Step 2: flowcanvas config params <config_id>
         → 查看模型的合法参数值（aspect_ratio、resolution 等）
 
 Step 3: flowcanvas generate <type> <canvas_uuid> \
@@ -37,8 +37,8 @@ flowcanvas config list --type image
 flowcanvas config list --type video
 flowcanvas config list --type audio
 
-# JSON 输出
-flowcanvas --json config list --type image
+# JSON 输出（默认）
+flowcanvas config list --type image
 # [
 #   {
 #     "config_id": 16,
@@ -62,8 +62,8 @@ flowcanvas config params <config_id>
 # 只看指定模型
 flowcanvas config params <config_id> --model <model_key>
 
-# JSON 输出（Agent 推荐）
-flowcanvas --json config params <config_id>
+# JSON 输出（默认）
+flowcanvas config params <config_id>
 ```
 
 **Human 模式输出示例**：
@@ -148,10 +148,10 @@ flowcanvas generate image <canvas_uuid> \
 flowcanvas generate image <uuid> --prompt "赛博朋克城市夜景" --config <config_id>
 ```
 
-**JSON 输出**（含 nodeId，用于后续图生视频）：
+**JSON 输出**（默认，含 nodeId，用于后续图生视频）：
 
 ```bash
-flowcanvas --json generate image <uuid> --prompt "..." --config <config_id>
+flowcanvas generate image <uuid> --prompt "..." --config <config_id>
 # {
 #   "nodeId": "abc-123",
 #   "task_id": "task-xxx",
@@ -207,7 +207,7 @@ flowcanvas generate video <canvas_uuid> \
 **图生视频（推荐方式）**：
 
 ```bash
-# 先获取图片节点 ID（从 generate image --json 的 nodeId 字段）
+# 先获取图片节点 ID（从 generate image 的默认 JSON 输出中取 nodeId 字段）
 flowcanvas generate video <canvas_uuid> --from <image_node_id> --prompt "..." --config <id>
 ```
 

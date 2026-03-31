@@ -104,7 +104,7 @@ flowcanvas generate image <uuid> --prompt "赛博朋克城市夜景" --config <c
 
 | 选项 | 说明 |
 |------|------|
-| `--json` | JSON 格式输出（AI Agent 解析推荐） |
+| `--pretty` | 人类可读格式输出（表格+颜色），默认为 JSON 格式 |
 | `--server <url>` | FlowCanvas 地址（默认 `http://localhost:8000`） |
 
 ---
@@ -221,7 +221,7 @@ flowcanvas generate image <uuid> --prompt "..." --config <id>
 
 ```bash
 # Step 1：生成图片，获取节点 ID
-flowcanvas --json generate image <uuid> --prompt "..." --config <img_config_id>
+flowcanvas generate image <uuid> --prompt "..." --config <img_config_id>
 # 输出示例：{ "nodeId": "abc-123", "status": "completed", ... }
 
 # Step 2：以图片为首帧生成视频
