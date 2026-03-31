@@ -36,11 +36,11 @@ export class FlowCanvasClient {
             throw new Error(`Failed to get canvas elements: ${res.status}`);
         return res.json();
     }
-    async addCanvasElement(canvasUuid, type, x, y) {
+    async addCanvasElement(canvasUuid, type, x, y, label) {
         const res = await fetch(`${this.baseUrl}/api/canvases/${canvasUuid}/elements`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ type, x, y }),
+            body: JSON.stringify({ type, x, y, custom_label: label }),
         });
         if (!res.ok) {
             const err = await res.text();

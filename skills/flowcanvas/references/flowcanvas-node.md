@@ -14,6 +14,10 @@ flowcanvas node add <canvas_uuid> text
 # 手动位置
 flowcanvas node add <canvas_uuid> image-generation --x 500 --y 300
 
+# 设置自定义标签（在 UI 中显示的节点名称）
+flowcanvas node add <canvas_uuid> image-generation --label "参考图A"
+flowcanvas node add <canvas_uuid> video-generation --label "最终视频" --from <image_node_id>
+
 # 从现有节点拖出连接（创建新节点 + 自动连接，等同于画布UI拖拽连接线操作）
 flowcanvas node add <canvas_uuid> video-generation --from <image_node_id>
 flowcanvas node add <canvas_uuid> audio-generation --from <image_node_id>

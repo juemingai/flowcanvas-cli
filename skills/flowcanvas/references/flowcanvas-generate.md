@@ -112,6 +112,7 @@ flowcanvas generate image <canvas_uuid> \
   --aspect-ratio <ratio>     # 宽高比（如 1:1, 16:9, 9:16）
   --resolution <res>         # 分辨率（如 1024x1024）
   --count <n>                # 生成数量（1, 2, 或 4，默认 1）
+  --label <label>            # 自动创建节点时设置的标签名称（省略 --node 时生效）
 ```
 
 **典型用法（推荐，一步完成）**：
@@ -159,6 +160,7 @@ flowcanvas generate video <canvas_uuid> \
   --duration <seconds>       # 时长（秒）
   --resolution <res>         # 分辨率
   --ratio <ratio>            # 宽高比
+  --label <label>            # 自动创建节点时设置的标签名称（省略 --node 时生效）
 ```
 
 **图生视频快捷方式（推荐）**：使用 `--from` 参数，一步完成创建视频节点、连接到图片节点、触发生成：
@@ -190,6 +192,7 @@ flowcanvas generate audio <canvas_uuid> \
   --style <style>            # 音乐风格
   --title <title>            # 歌曲标题
   --instrumental             # 纯音乐（无人声）
+  --label <label>            # 自动创建节点时设置的标签名称（省略 --node 时生效）
 ```
 
 **典型用法（一步完成）**：

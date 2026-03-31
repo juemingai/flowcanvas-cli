@@ -54,10 +54,11 @@ flowcanvas --json canvas get <uuid>
 #   "id": "node-uuid",
 #   "type": "image-generation",
 #   "x": 120, "y": 200,
+#   "label": "参考图A",             // 用户自定义标签（无则为 null）
 #   "generationState": "completed",  // idle | generating | completed | failed
 #   "results_count": 1,
 #   "prompt": "赛博朋克城市..."
 # }
 ```
 
-**Agent 用法**：使用 `--json` 获取节点 ID，用于后续的连接（edge add）或删除（node delete）操作。
+**Agent 用法**：使用 `--json` 获取节点 ID 和 label，用于后续的连接（edge add）或删除（node delete）操作。

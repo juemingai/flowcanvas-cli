@@ -10,11 +10,12 @@ export function registerNodeCommand(program, client) {
         .option("--x <x>", "X position (auto-calculated if omitted)", parseFloat)
         .option("--y <y>", "Y position (auto-calculated if omitted)", parseFloat)
         .option("--from <source_id>", "Source node ID — creates the new node and connects source → new node (like dragging a connection line)")
+        .option("--label <label>", "Custom display label for the node (optional)")
         .action(async (canvasUuid, type, opts) => {
         if (!SUPPORTED_TYPES.includes(type)) {
             throw new Error(`Unsupported node type: ${type}. Supported: ${SUPPORTED_TYPES.join(", ")}`);
         }
-        const elem = await client.addCanvasElement(canvasUuid, type, opts.x, opts.y);
+        const elem = await client.addCanvasElement(canvasUuid, type, opts.x, opts.y, opts.label);
         // --from: auto-connect source node → new node
         if (opts.from) {
             const edge = await client.addCanvasEdge(canvasUuid, opts.from, elem.id);

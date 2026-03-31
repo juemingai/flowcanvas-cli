@@ -46,6 +46,7 @@ export interface ElementSummary {
     type: string;
     x: number;
     y: number;
+    label?: string | null;
     generationState?: string | null;
     results_count: number;
     prompt?: string | null;
@@ -80,7 +81,7 @@ export declare class FlowCanvasClient {
         name: string;
     }>;
     getCanvasElements(canvasUuid: string): Promise<ElementSummary[]>;
-    addCanvasElement(canvasUuid: string, type: string, x?: number, y?: number): Promise<ElementSummary>;
+    addCanvasElement(canvasUuid: string, type: string, x?: number, y?: number, label?: string): Promise<ElementSummary>;
     deleteCanvasElement(canvasUuid: string, elementId: string): Promise<void>;
     addCanvasEdge(canvasUuid: string, sourceId: string, targetId: string): Promise<EdgeResult>;
     getAvailableConfigs(modelType?: "image" | "video" | "audio"): Promise<AvailableConfig[]>;

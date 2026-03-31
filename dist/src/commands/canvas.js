@@ -48,9 +48,10 @@ export function registerCanvasCommand(program, client) {
             outputError("Canvas is empty — no nodes found.");
             return;
         }
-        outputTable(["ID", "Type", "Position", "State", "Results", "Prompt"], elements.map((e) => [
+        outputTable(["ID", "Type", "Label", "Position", "State", "Results", "Prompt"], elements.map((e) => [
             e.id,
             e.type,
+            e.label ?? "",
             `(${Math.round(e.x)}, ${Math.round(e.y)})`,
             e.generationState ?? "",
             String(e.results_count),

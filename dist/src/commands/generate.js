@@ -14,6 +14,7 @@ export function registerGenerateCommand(program, client) {
         .option("--resolution <res>", "Resolution (e.g. 1024x1024)")
         .option("--count <n>", "Number of images (1, 2, or 4)", "1")
         .option("--from <node_id>", "Reference image node IDs (repeat for multi-image fusion, e.g. --from id1 --from id2)", (val, prev) => [...prev, val], [])
+        .option("--label <label>", "Custom display label for the auto-created node (optional)")
         .action(async (canvasUuid, opts) => {
         const configId = parseInt(opts.config, 10);
         const fromNodes = opts.from;
@@ -56,7 +57,7 @@ export function registerGenerateCommand(program, client) {
         // Auto-create image node if --node not specified
         let targetNodeId = opts.node;
         if (!targetNodeId) {
-            const newNode = await client.addCanvasElement(canvasUuid, "image-generation");
+            const newNode = await client.addCanvasElement(canvasUuid, "image-generation", undefined, undefined, opts.label);
             outputInfo(`Created image node: ${newNode.id}`);
             targetNodeId = newNode.id;
         }
@@ -149,6 +150,7 @@ export function registerGenerateCommand(program, client) {
         .option("--duration <seconds>", "Duration in seconds")
         .option("--resolution <res>", "Resolution")
         .option("--ratio <ratio>", "Aspect ratio")
+        .option("--label <label>", "Custom display label for the auto-created node (optional)")
         .action(async (canvasUuid, opts) => {
         const configId = parseInt(opts.config, 10);
         let modelKey = opts.model;
@@ -206,7 +208,7 @@ export function registerGenerateCommand(program, client) {
             const mode = sourceImageUrls.length === 2 ? "first/last frame" : "image-to-video";
             outputInfo(`Mode: ${mode}`);
             outputInfo("Creating video node...");
-            const videoNode = await client.addCanvasElement(canvasUuid, "video-generation");
+            const videoNode = await client.addCanvasElement(canvasUuid, "video-generation", undefined, undefined, opts.label);
             outputInfo(`Created video node: ${videoNode.id}`);
             if (opts.from) {
                 await client.addCanvasEdge(canvasUuid, opts.from, videoNode.id);
@@ -221,7 +223,7 @@ export function registerGenerateCommand(program, client) {
         }
         // Auto-create video node if neither --from/--last-frame nor --node was specified
         if (!opts.from && !opts.lastFrame && !targetNodeId) {
-            const newNode = await client.addCanvasElement(canvasUuid, "video-generation");
+            const newNode = await client.addCanvasElement(canvasUuid, "video-generation", undefined, undefined, opts.label);
             outputInfo(`Created video node: ${newNode.id}`);
             targetNodeId = newNode.id;
         }
@@ -311,6 +313,7 @@ export function registerGenerateCommand(program, client) {
         .option("--style <style>", "Music style")
         .option("--title <title>", "Song title")
         .option("--instrumental", "Instrumental only (no vocals)")
+        .option("--label <label>", "Custom display label for the auto-created node (optional)")
         .action(async (canvasUuid, opts) => {
         const configId = parseInt(opts.config, 10);
         let modelKey = opts.model;
@@ -325,7 +328,7 @@ export function registerGenerateCommand(program, client) {
         }
         // Auto-create audio node if --node not specified
         if (!opts.node) {
-            const newNode = await client.addCanvasElement(canvasUuid, "audio-generation");
+            const newNode = await client.addCanvasElement(canvasUuid, "audio-generation", undefined, undefined, opts.label);
             outputInfo(`Created audio node: ${newNode.id}`);
             opts.node = newNode.id;
         }
