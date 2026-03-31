@@ -1,5 +1,29 @@
 # Generate & Config 命令参考
 
+## Agent 生成工作流（必须遵循）
+
+**CRITICAL — 生成内容前，必须按以下 3 步操作，禁止凭感觉填写参数值：**
+
+```
+Step 1: flowcanvas --json config list --type <image|video|audio>
+        → 获取 config_id 和可用 model_key
+
+Step 2: flowcanvas --json config params <config_id>
+        → 查看模型的合法参数值（aspect_ratio、resolution 等）
+
+Step 3: flowcanvas generate <type> <canvas_uuid> \
+          --prompt "..." --config <config_id> \
+          [--aspect-ratio <从Step2获取的合法值>] \
+          [--resolution <从Step2获取的合法值>]
+```
+
+> **AI 行为指导：**
+> - `--aspect-ratio` 和 `--resolution` 的合法值**因模型而异**，必须从 `config params` 输出的 `options` 字段读取
+> - 如果用户没有特别指定参数，使用 schema 中的 `default` 值即可，不要传入该参数
+> - 不确定参数合法值时，宁可少传，不要乱传（多余参数会被后端忽略，但错误值会导致生成失败）
+
+---
+
 ## flowcanvas config list
 
 列出可用的模型配置。每个配置包含 API Key 和可用模型列表。
@@ -29,7 +53,7 @@ flowcanvas --json config list --type image
 
 ## flowcanvas config params
 
-查看某个模型配置支持哪些参数、参数类型和合法值，用于确认 `generate` 命令应如何传参。
+查看某个模型配置支持哪些参数、参数类型和**合法值**，用于确认 `generate` 命令应如何传参。
 
 ```bash
 # 查看 config 1 下所有模型的参数
@@ -46,7 +70,7 @@ flowcanvas --json config params <config_id>
 ```
 Config: My Config (ID: 1) — BytePlus [image]
 
-▸ Model: Seedream 3.0 (key: seedream-3.0)
+▸ Model: Seedream 4.5 (key: seedream-4.5)
 
 ┌──────────────┬────────┬──────┬────────┬─────────────────────┬──────────────┐
 │ 参数名       │ 类型   │ 必填 │ 默认值 │ 可选值/范围         │ 说明         │
@@ -60,8 +84,8 @@ Config: My Config (ID: 1) — BytePlus [image]
 ```json
 [
   {
-    "model_key": "seedream-3.0",
-    "model_name": "Seedream 3.0",
+    "model_key": "seedream-4.5",
+    "model_name": "Seedream 4.5",
     "parameter_schema": {
       "aspect_ratio": {
         "type": "select",
@@ -86,16 +110,11 @@ Config: My Config (ID: 1) — BytePlus [image]
 
 | 类型 | 含义 | 可传值 |
 |------|------|--------|
-| `select` | 枚举选择 | `options` 中的某个 `value` |
+| `select` | 枚举选择 | `options` 中的某个值（必须完全匹配） |
 | `string` | 自由文本 | 任意字符串 |
 | `boolean` | 开关 | `true` / `false` |
 | `range` | 数值范围 | `min` 到 `max` 之间，步长 `step` |
 | `file[]` | 图片文件 | 通过 `--images` 参数（CLI 暂不支持，需通过前端上传） |
-
-**Agent 工作流（推荐）**：
-1. `flowcanvas --json config list --type image` → 获取 `config_id` 和 `model_key`
-2. `flowcanvas --json config params <config_id> --model <model_key>` → 查看合法参数值
-3. 根据 schema 构造 `generate` 命令参数
 
 ## flowcanvas generate image
 
@@ -105,15 +124,22 @@ Config: My Config (ID: 1) — BytePlus [image]
 flowcanvas generate image <canvas_uuid> \
   --prompt "赛博朋克城市夜景，霓虹灯光，高楼大厦" \
   --config <config_id>
-
-# 可选参数
-  --node <element_id>        # 目标节点 ID（省略时自动创建新节点）
-  --model <model_key>        # 模型 key（默认使用配置中第一个模型）
-  --aspect-ratio <ratio>     # 宽高比（如 1:1, 16:9, 9:16）
-  --resolution <res>         # 分辨率（如 1024x1024）
-  --count <n>                # 生成数量（1, 2, 或 4，默认 1）
-  --label <label>            # 自动创建节点时设置的标签名称（省略 --node 时生效）
 ```
+
+**参数说明**：
+
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| `<canvas_uuid>` | 是 | 目标画布 UUID |
+| `--prompt <text>` | 是 | 图片生成提示词 |
+| `--config <id>` | 是 | 模型配置 ID（从 `config list --type image` 获取） |
+| `--node <element_id>` | 否 | 目标节点 ID（省略时自动创建新节点） |
+| `--model <model_key>` | 否 | 模型 key（省略时使用配置中第一个模型） |
+| `--aspect-ratio <ratio>` | 否 | 宽高比（合法值从 `config params` 获取，如 `1:1`、`16:9`） |
+| `--resolution <res>` | 否 | 分辨率（合法值从 `config params` 获取，如 `1K`、`2K`、`4K`） |
+| `--count <n>` | 否 | 生成数量，默认 1（并非所有模型支持，先用 `config params` 确认） |
+| `--from <node_id>` | 否 | 参考图节点 ID（可多次传入，多图融合时传 2+ 个） |
+| `--label <label>` | 否 | 节点标签（省略 `--node` 时自动创建节点的显示名称） |
 
 **典型用法（推荐，一步完成）**：
 
@@ -146,35 +172,53 @@ flowcanvas --json generate image <uuid> --prompt "..." --config <config_id>
 
 ## flowcanvas generate video
 
-生成视频并自动在画布上创建节点、绑定结果。
+生成视频并自动在画布上创建节点、绑定结果。支持三种生成模式：
+
+**生成模式对比**：
+
+| 模式 | 参数组合 | 说明 |
+|------|---------|------|
+| 文生视频 | 只有 `--prompt` | 完全由文字描述生成视频 |
+| 图生视频 | `--from <image_node_id>` | 以图片节点的结果为首帧生成 |
+| 首尾帧视频 | `--from <first_node_id> --last-frame <last_node_id>` | 指定首帧和尾帧，生成过渡动画 |
 
 ```bash
 flowcanvas generate video <canvas_uuid> \
   --config <config_id> \
   --prompt "城市漫游镜头，缓慢推进"
-
-# 可选参数
-  --model <model_key>        # 模型 key
-  --node <element_id>        # 目标节点 ID（省略时自动创建新节点）
-  --from <image_node_id>     # 源图片节点 ID（图生视频：自动创建视频节点+连接+生成）
-  --duration <seconds>       # 时长（秒）
-  --resolution <res>         # 分辨率
-  --ratio <ratio>            # 宽高比
-  --label <label>            # 自动创建节点时设置的标签名称（省略 --node 时生效）
 ```
 
-**图生视频快捷方式（推荐）**：使用 `--from` 参数，一步完成创建视频节点、连接到图片节点、触发生成：
+**参数说明**：
+
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| `<canvas_uuid>` | 是 | 目标画布 UUID |
+| `--config <id>` | 是 | 模型配置 ID（从 `config list --type video` 获取） |
+| `--prompt <text>` | 否* | 视频生成提示词（文生视频时必填，图生视频时可选） |
+| `--model <model_key>` | 否 | 模型 key（省略时使用配置中第一个模型） |
+| `--node <element_id>` | 否 | 目标节点 ID（省略时自动创建新节点） |
+| `--from <image_node_id>` | 否 | 首帧图片节点 ID（图生视频 / 首尾帧视频） |
+| `--last-frame <image_node_id>` | 否 | 尾帧图片节点 ID（首尾帧视频，必须与 `--from` 配合使用） |
+| `--duration <seconds>` | 否 | 视频时长（整数秒，合法范围从 `config params` 确认） |
+| `--resolution <res>` | 否 | 分辨率（合法值从 `config params` 获取） |
+| `--ratio <ratio>` | 否 | 宽高比（合法值从 `config params` 获取） |
+| `--label <label>` | 否 | 节点标签（自动创建节点时的显示名称） |
+
+**图生视频（推荐方式）**：
 
 ```bash
 # 先获取图片节点 ID（从 generate image --json 的 nodeId 字段）
 flowcanvas generate video <canvas_uuid> --from <image_node_id> --prompt "..." --config <id>
 ```
 
-**文生视频（一步完成）**：
+**首尾帧视频**：
 
 ```bash
-# 自动创建视频节点 + 生成 + 绑定结果
-flowcanvas generate video <uuid> --prompt "城市漫游" --config <config_id>
+flowcanvas generate video <canvas_uuid> \
+  --from <first_frame_node_id> \
+  --last-frame <last_frame_node_id> \
+  --prompt "角色从A姿势变换到B姿势" \
+  --config <id>
 ```
 
 ## flowcanvas generate audio
@@ -185,18 +229,18 @@ flowcanvas generate video <uuid> --prompt "城市漫游" --config <config_id>
 flowcanvas generate audio <canvas_uuid> \
   --prompt "欢快的电子舞曲，节奏感强" \
   --config <config_id>
-
-# 可选参数
-  --node <element_id>        # 目标节点 ID（省略时自动创建新节点）
-  --model <model_key>        # 模型 key
-  --style <style>            # 音乐风格
-  --title <title>            # 歌曲标题
-  --instrumental             # 纯音乐（无人声）
-  --label <label>            # 自动创建节点时设置的标签名称（省略 --node 时生效）
 ```
 
-**典型用法（一步完成）**：
+**参数说明**：
 
-```bash
-flowcanvas generate audio <uuid> --prompt "欢快的电子舞曲" --config <config_id>
-```
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| `<canvas_uuid>` | 是 | 目标画布 UUID |
+| `--prompt <text>` | 是 | 音频生成提示词（描述音乐风格、情感、场景等） |
+| `--config <id>` | 是 | 模型配置 ID（从 `config list --type audio` 获取） |
+| `--node <element_id>` | 否 | 目标节点 ID（省略时自动创建新节点） |
+| `--model <model_key>` | 否 | 模型 key（省略时使用配置中第一个模型） |
+| `--style <style>` | 否 | 音乐风格（如 "电子舞曲"、"古典钢琴"） |
+| `--title <title>` | 否 | 歌曲标题 |
+| `--instrumental` | 否 | 纯音乐模式（无人声，布尔开关，无需值） |
+| `--label <label>` | 否 | 节点标签（自动创建节点时的显示名称） |

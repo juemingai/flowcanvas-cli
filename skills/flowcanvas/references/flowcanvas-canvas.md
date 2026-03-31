@@ -21,10 +21,23 @@ flowcanvas canvas list
 # 表格输出：Name | UUID | Nodes | Updated | Favorite
 
 flowcanvas --json canvas list
-# JSON 数组，每个元素包含：id, uuid, name, is_favorite, created_at, updated_at, element_count
+# JSON 数组示例：
+# [
+#   {
+#     "id": 1,
+#     "uuid": "xxx-xxx-xxx",
+#     "name": "赛博朋克项目",
+#     "is_favorite": false,
+#     "is_archived": false,
+#     "created_at": "2026-03-01T10:00:00",
+#     "updated_at": "2026-03-31T15:30:00",
+#     "element_count": 5,
+#     "thumbnail_url": "/files/xxx/thumbnail.png"  // 可能为 null
+#   }
+# ]
 ```
 
-**Agent 用法**：使用 `--json` 获取结构化数据，按 `name` 模糊匹配用户提到的画布名称。
+**Agent 用法**：使用 `--json` 获取结构化数据，按 `name` 模糊匹配用户提到的画布名称。`thumbnail_url` 字段可能为 `null`，匹配时勿依赖此字段。
 
 ## flowcanvas canvas create
 

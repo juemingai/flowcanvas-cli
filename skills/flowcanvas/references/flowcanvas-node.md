@@ -34,6 +34,17 @@ flowcanvas --json node add <canvas_uuid> video-generation --from <image_node_id>
 # }
 ```
 
+**参数说明**：
+
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| `<canvas_uuid>` | 是 | 目标画布 UUID |
+| `<type>` | 是 | 节点类型（见下表） |
+| `--x <n>` | 否 | 节点横坐标（省略时自动放置在现有节点右侧） |
+| `--y <n>` | 否 | 节点纵坐标（省略时自动计算） |
+| `--from <node_id>` | 否 | 源节点 ID，自动创建新节点并连接（一步完成创建+连接） |
+| `--label <label>` | 否 | 节点显示标签（在 UI 画布中展示的名称） |
+
 **支持的节点类型**：
 
 | 类型 | 说明 |
@@ -42,6 +53,13 @@ flowcanvas --json node add <canvas_uuid> video-generation --from <image_node_id>
 | `video-generation` | 视频生成节点 |
 | `audio-generation` | 音频生成节点 |
 | `text` | 文本节点 |
+
+**`node add --from` vs `edge add` 的区别**：
+
+| 操作 | 适用场景 |
+|------|---------|
+| `node add <uuid> <type> --from <src_id>` | **同时**创建新节点 + 建立连接（推荐，一步完成） |
+| `edge add <uuid> <src_id> <tgt_id>` | 连接**已存在的**两个节点（节点已创建，只需连线） |
 
 ## flowcanvas node delete
 

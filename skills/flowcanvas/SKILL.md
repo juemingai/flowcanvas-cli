@@ -1,6 +1,6 @@
 ---
 name: flowcanvas
-version: 1.0.0
+version: 1.1.0
 description: "FlowCanvas 画布操作：管理画布、添加/连接/删除节点、触发 AI 图片/视频/音频生成。需要本地运行 FlowCanvas 桌面端（localhost:8000）。核心场景包括：创建画布并组织 AI 生成工作流、在画布上添加节点并建立连接、批量生成图片/视频/音频内容。当用户提到 FlowCanvas、画布操作、AI 生图/视频/音频生成时触发。"
 metadata:
   requires:
@@ -12,7 +12,17 @@ metadata:
 
 本技能指导你如何通过 `flowcanvas` CLI 操作 FlowCanvas 画布，管理节点和连接，以及触发 AI 图片/视频/音频生成。
 
-**CRITICAL — 所有命令在执行前，务必先使用 Read 工具读取对应的说明文档，禁止直接盲目调用命令。**
+**CRITICAL — 执行生成命令前，务必先使用 Read 工具读取 [flowcanvas-generate.md](references/flowcanvas-generate.md) 了解参数说明，禁止盲目猜测参数值。**
+
+## 快捷方式（Shortcuts）
+
+优先使用以下快捷入口，覆盖 90% 的常用场景：
+
+| Shortcut | 说明 |
+|----------|------|
+| [`+generate-image`](references/flowcanvas-generate.md#flowcanvas-generate-image) | 文生图、参考图生图、多图融合 |
+| [`+generate-video`](references/flowcanvas-generate.md#flowcanvas-generate-video) | 文生视频、图生视频、首尾帧视频 |
+| [`+generate-audio`](references/flowcanvas-generate.md#flowcanvas-generate-audio) | 文生音频 |
 
 ## 前置条件
 
@@ -41,6 +51,11 @@ flowcanvas health
 **规则 3：新建画布必须命名**
 - 创建前必须明确问用户："您想给这个画布起什么名字？"
 - ❌ 禁止使用 "Untitled Canvas" 或任何默认名称
+
+> **AI 行为指导：**
+> - **自动决策**：用户说了画布名且唯一匹配时，无需再次确认，直接使用
+> - **必须询问**：画布未指定、多个匹配、或要新建时，必须先问用户
+> - **参数合法性**：`--aspect-ratio`、`--resolution` 等参数值因模型而异，必须先运行 `flowcanvas config params <config_id>` 获取合法值，禁止凭感觉填写
 
 ## 核心概念
 
@@ -79,6 +94,11 @@ Canvas (画布)
 | `flowcanvas generate video <uuid>` | 生成视频 | [flowcanvas-generate](references/flowcanvas-generate.md) |
 | `flowcanvas generate audio <uuid>` | 生成音频 | [flowcanvas-generate](references/flowcanvas-generate.md) |
 
+**何时用 `generate` vs `node add + generate`：**
+- ✅ **大多数场景**：直接用 `generate` — 自动创建节点 + 生成 + 绑定结果，一步完成
+- ✅ **链式工作流**：`generate image --json` 获取 `nodeId`，再 `generate video --from <nodeId>`
+- ⚙️ **需要预先规划画布结构**：先用 `node add` 手动建多个空节点，再逐一调用 `generate --node <id>` 绑定到指定节点
+
 ## 全局选项
 
 | 选项 | 说明 |
@@ -97,7 +117,7 @@ flowcanvas canvas list
 # 2. 查看可用图片模型配置
 flowcanvas config list --type image
 
-# 3. （可选）查看模型支持的参数，了解有哪些合法值可传
+# 3. 查看模型支持的参数，了解合法参数值（如 aspect_ratio、resolution 的可选值）
 flowcanvas config params <config_id>
 
 # 4. 一步生成（自动创建节点 + 生成 + 绑定结果，桌面端自动刷新）
@@ -113,6 +133,30 @@ flowcanvas --json generate image <uuid> --prompt "赛博朋克城市" --config <
 
 # Step 2: 用 --from 一步完成图生视频（自动创建视频节点 + 连接 + 生成）
 flowcanvas generate video <uuid> --from <nodeId> --prompt "城市漫游镜头" --config <video_config_id>
+```
+
+### 3. 音频生成（一步完成）
+
+```bash
+flowcanvas generate audio <uuid> --prompt "欢快的电子舞曲" --config <audio_config_id>
+```
+
+### 4. 分步手动控制（高级用法）
+
+如需先规划画布结构再生成，可使用底层命令：
+
+```bash
+# 添加空节点
+flowcanvas node add <uuid> image-generation
+
+# 查看节点 ID
+flowcanvas --json canvas get <uuid>
+
+# 连接节点
+flowcanvas edge add <uuid> <image_id> <video_id>
+
+# 生成并绑定到指定节点
+flowcanvas generate image <uuid> --node <element_id> --prompt "..." --config <id>
 ```
 
 ### 5. 多图融合（多个图片节点 → 新图片节点）
@@ -138,30 +182,6 @@ flowcanvas generate video <uuid> \
   --prompt "角色从A姿势变换到B姿势" \
   --config <config_id>
 # 后端自动检测：images == 2 张 → 进入"首尾帧生成"模式
-```
-
-### 3. 音频生成（一步完成）
-
-```bash
-flowcanvas generate audio <uuid> --prompt "欢快的电子舞曲" --config <audio_config_id>
-```
-
-### 4. 分步手动控制（高级用法）
-
-如需先规划画布结构再生成，可使用底层命令：
-
-```bash
-# 添加空节点
-flowcanvas node add <uuid> image-generation
-
-# 查看节点 ID
-flowcanvas --json canvas get <uuid>
-
-# 连接节点
-flowcanvas edge add <uuid> <image_id> <video_id>
-
-# 生成并绑定到指定节点
-flowcanvas generate image <uuid> --node <element_id> --prompt "..." --config <id>
 ```
 
 ## 其他规则
