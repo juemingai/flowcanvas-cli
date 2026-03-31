@@ -2,22 +2,92 @@
 
 FlowCanvas 命令行工具，让人类和 AI Agent 都能通过终端操作 FlowCanvas 画布。
 
+## 环境要求
+
+在安装 FlowCanvas CLI 之前，请确认以下两项已就绪：
+
+### 1. FlowCanvas 桌面端
+
+CLI 需要连接本地运行的 FlowCanvas 桌面端（默认地址 `http://localhost:8000`）。请先启动 FlowCanvas，再执行任何 CLI 命令。
+
+### 2. Node.js 22 或更高版本
+
+CLI 基于 Node.js 运行。请打开终端，输入以下命令检查是否已安装：
+
+```bash
+node --version
+```
+
+如果输出 `v22.x.x` 或更高版本，说明已满足要求。
+
+如果提示"命令未找到"或版本过低，请前往 [nodejs.org](https://nodejs.org/) 下载安装最新的 LTS 版本（推荐选择标有 **LTS** 的版本，当前为 v22）。
+
+> **macOS 用户**：也可以通过 Homebrew 安装：`brew install node`
+> **Windows 用户**：下载 `.msi` 安装包，一路点击"下一步"即可
+
+---
+
 ## 安装
+
+确认 Node.js 就绪后，在终端中依次执行以下两条命令：
+
+**第一步：安装 FlowCanvas CLI**
 
 ```bash
 npm install -g @flowcanvas/cli
 ```
 
+这条命令会把 `flowcanvas` 命令安装到你的电脑上，安装完成后即可在任意目录使用。
+
+**第二步：安装 Skill（AI Agent 使用必需）**
+
+```bash
+npx skills add @flowcanvas/cli -y -g
+```
+
+Skill 是 AI Agent（如 Claude Code）的"操作手册"。安装后，Claude Code 会自动学会如何使用 FlowCanvas CLI 帮你生成图片、视频和音频，无需你手动配置任何东西。
+
+> 如果你只打算自己在终端敲命令，不使用 AI Agent，可以跳过第二步。
+
+---
+
+## 验证安装
+
+两步完成后，运行以下命令确认一切正常：
+
+```bash
+flowcanvas --version   # 应输出当前版本号，如 1.4.2
+flowcanvas health      # 应输出 ✓ FlowCanvas is running（需桌面端已启动）
+```
+
+如果 `flowcanvas health` 返回连接失败，请检查 FlowCanvas 桌面端是否已启动。
+
+---
+
+## 更新到最新版本
+
+```bash
+npm install -g @flowcanvas/cli
+npx skills add @flowcanvas/cli -y -g
+```
+
+两条命令重新执行一遍即可更新到最新版本（Skill 也会同步更新）。
+
+---
+
 ## 快速开始
 
 ```bash
-# 确认 FlowCanvas 桌面端已运行
-flowcanvas health
-
-# 列出画布
+# 列出所有画布
 flowcanvas canvas list
 
-# 一步生成图片（自动创建节点）
+# 查看某个画布的节点（将 <uuid> 替换为上一步列出的 UUID）
+flowcanvas canvas get <uuid>
+
+# 查看可用的 AI 模型配置
+flowcanvas config list --type image
+
+# 一步生成图片（将 <uuid> 和 <config_id> 替换为你自己的值）
 flowcanvas generate image <uuid> --prompt "赛博朋克城市夜景" --config <config_id>
 ```
 
@@ -174,9 +244,9 @@ flowcanvas generate image <canvas_uuid> \
   --config <config_id> \
   [--node <element_id>]          # 省略则自动创建节点
   [--model <model_key>]
-  [--aspect-ratio 16:9]
-  [--resolution 1024x1024]
-  [--count 1|2|4]
+  [--aspect-ratio <ratio>]       # 宽高比，合法值从 config params 获取（如 1:1, 16:9）
+  [--resolution <res>]           # 分辨率，合法值从 config params 获取（如 1K, 2K, 4K）
+  [--count 1|2|4]                # 并非所有模型支持，先用 config params 确认
 ```
 
 #### generate video
