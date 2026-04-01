@@ -313,6 +313,13 @@ export function registerGenerateCommand(program, client) {
         .option("--style <style>", "Music style")
         .option("--title <title>", "Song title")
         .option("--instrumental", "Instrumental only (no vocals)")
+        .option("--custom-mode", "Enable custom mode for music generation (KIE)")
+        .option("--vocal-gender <gender>", "Vocal gender for music: m (male) | f (female) (KIE custom mode only)")
+        .option("--voice-id <voice_id>", "Voice ID for TTS (MiniMax), e.g. male-qn-qingse")
+        .option("--emotion <emotion>", "Emotion for TTS (MiniMax): auto|happy|sad|angry|fearful|disgusted|surprised|neutral")
+        .option("--speed <speed>", "Speech speed 0.5-2.0 for TTS (MiniMax, default 1.0)")
+        .option("--vol <vol>", "Volume 0.1-10.0 for TTS (MiniMax, default 1.0)")
+        .option("--pitch <pitch>", "Pitch -12 to 12 for TTS (MiniMax, default 0)")
         .option("--label <label>", "Custom display label for the auto-created node (optional)")
         .action(async (canvasUuid, opts) => {
         const configId = parseInt(opts.config, 10);
@@ -340,6 +347,13 @@ export function registerGenerateCommand(program, client) {
             style: opts.style,
             title: opts.title,
             instrumental: opts.instrumental === true ? true : undefined,
+            custom_mode: opts.customMode === true ? true : undefined,
+            vocal_gender: opts.vocalGender,
+            voice_id: opts.voiceId,
+            emotion: opts.emotion,
+            speed: opts.speed ? parseFloat(opts.speed) : undefined,
+            vol: opts.vol ? parseFloat(opts.vol) : undefined,
+            pitch: opts.pitch ? parseInt(opts.pitch, 10) : undefined,
             canvas_id: canvasUuid,
         });
         outputInfo(`Task ID: ${task_id} — waiting for completion...`);
@@ -375,6 +389,13 @@ export function registerGenerateCommand(program, client) {
                                     style: opts.style || "",
                                     title: opts.title || "",
                                     instrumental: opts.instrumental === true,
+                                    customMode: opts.customMode === true,
+                                    vocalGender: opts.vocalGender || undefined,
+                                    voiceId: opts.voiceId || undefined,
+                                    emotion: opts.emotion || undefined,
+                                    speed: opts.speed ? parseFloat(opts.speed) : undefined,
+                                    vol: opts.vol ? parseFloat(opts.vol) : undefined,
+                                    pitch: opts.pitch ? parseInt(opts.pitch, 10) : undefined,
                                 },
                             },
                         };

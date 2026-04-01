@@ -154,8 +154,20 @@ export class FlowCanvasClient {
             form.append("style", params.style);
         if (params.title)
             form.append("title", params.title);
+        if (params.vocal_gender)
+            form.append("vocal_gender", params.vocal_gender);
         if (params.canvas_id)
             form.append("canvas_id", params.canvas_id);
+        if (params.voice_id)
+            form.append("voice_id", params.voice_id);
+        if (params.emotion)
+            form.append("emotion", params.emotion);
+        if (params.speed !== undefined)
+            form.append("speed", String(params.speed));
+        if (params.vol !== undefined)
+            form.append("vol", String(params.vol));
+        if (params.pitch !== undefined)
+            form.append("pitch", String(params.pitch));
         const res = await fetch(`${this.baseUrl}/api/audio/generate-async`, { method: "POST", body: form });
         if (!res.ok) {
             const err = await res.text();

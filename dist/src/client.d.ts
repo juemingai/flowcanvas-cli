@@ -117,7 +117,13 @@ export declare class FlowCanvasClient {
         instrumental?: boolean;
         style?: string;
         title?: string;
+        vocal_gender?: string;
         canvas_id?: string;
+        voice_id?: string;
+        emotion?: string;
+        speed?: number;
+        vol?: number;
+        pitch?: number;
     }): Promise<{
         task_id: string;
     }>;

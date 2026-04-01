@@ -1,6 +1,6 @@
 ---
 name: flowcanvas
-version: 1.1.0
+version: 1.2.0
 description: "FlowCanvas 画布操作：管理画布、添加/连接/删除节点、触发 AI 图片/视频/音频生成。需要本地运行 FlowCanvas 桌面端（localhost:8000）。核心场景包括：创建画布并组织 AI 生成工作流、在画布上添加节点并建立连接、批量生成图片/视频/音频内容。当用户提到 FlowCanvas、画布操作、AI 生图/视频/音频生成时触发。"
 metadata:
   requires:
@@ -93,6 +93,7 @@ Canvas (画布)
 | `flowcanvas generate image <uuid>` | 生成图片 | [flowcanvas-generate](references/flowcanvas-generate.md) |
 | `flowcanvas generate video <uuid>` | 生成视频 | [flowcanvas-generate](references/flowcanvas-generate.md) |
 | `flowcanvas generate audio <uuid>` | 生成音频 | [flowcanvas-generate](references/flowcanvas-generate.md) |
+| `flowcanvas voices minimax` | 查看 MiniMax 系统音色 ID 列表 | [flowcanvas-generate](references/flowcanvas-generate.md) |
 
 **何时用 `generate` vs `node add + generate`：**
 - ✅ **大多数场景**：直接用 `generate` — 自动创建节点 + 生成 + 绑定结果，一步完成
@@ -135,10 +136,16 @@ flowcanvas generate image <uuid> --prompt "赛博朋克城市" --config <image_c
 flowcanvas generate video <uuid> --from <nodeId> --prompt "城市漫游镜头" --config <video_config_id>
 ```
 
-### 3. 音频生成（一步完成）
+### 3. 音频生成
 
 ```bash
+# KIE 音乐生成
 flowcanvas generate audio <uuid> --prompt "欢快的电子舞曲" --config <audio_config_id>
+
+# MiniMax TTS（先查音色 ID）
+flowcanvas voices minimax --lang 中文 --pretty
+flowcanvas generate audio <uuid> --prompt "欢迎使用 FlowCanvas" --config <audio_config_id> \
+  --voice-id female-shaonv --emotion happy
 ```
 
 ### 4. 分步手动控制（高级用法）

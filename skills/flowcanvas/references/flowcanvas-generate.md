@@ -221,26 +221,80 @@ flowcanvas generate video <canvas_uuid> \
   --config <id>
 ```
 
-## flowcanvas generate audio
+## flowcanvas voices minimax
 
-生成音频并自动在画布上创建节点、绑定结果。
+列出 MiniMax TTS 系统音色 ID（用于 `--voice-id` 参数）。此命令无需 FlowCanvas 运行，数据内置。
 
 ```bash
+# 查看所有语言分组及音色数量
+flowcanvas voices minimax --langs --pretty
+
+# 查看某语言下的所有音色（支持模糊匹配）
+flowcanvas voices minimax --lang 中文 --pretty
+flowcanvas voices minimax --lang 英文 --pretty
+flowcanvas voices minimax --lang 日文 --pretty
+
+# JSON 输出（方便脚本处理）
+flowcanvas voices minimax --lang 中文
+```
+
+**支持的语言分组**：中文 (普通话)、中文 (粤语)、英文、日文、韩文、西班牙文、葡萄牙文、法文、印尼文、德文、俄文、意大利文、阿拉伯文、土耳其文、乌克兰文、荷兰文、越南文、泰文、波兰文、罗马尼亚文、希腊文、捷克文、芬兰文、印地文（共 327 个系统音色）
+
+---
+
+## flowcanvas generate audio
+
+生成音频并自动在画布上创建节点、绑定结果。支持两种类型：
+- **KIE（音乐生成）**：Suno V5，根据歌词/描述生成完整音乐
+- **MiniMax（TTS 语音合成）**：Speech 系列，将文本转换为语音
+
+```bash
+# KIE 音乐生成
 flowcanvas generate audio <canvas_uuid> \
   --prompt "欢快的电子舞曲，节奏感强" \
   --config <config_id>
+
+# MiniMax TTS 语音合成
+flowcanvas generate audio <canvas_uuid> \
+  --prompt "欢迎使用 FlowCanvas，这是一段测试语音。" \
+  --config <config_id> \
+  --voice-id female-shaonv \
+  --emotion happy \
+  --speed 1.1
 ```
 
-**参数说明**：
+**通用参数**：
 
 | 参数 | 必填 | 说明 |
 |------|------|------|
 | `<canvas_uuid>` | 是 | 目标画布 UUID |
-| `--prompt <text>` | 是 | 音频生成提示词（描述音乐风格、情感、场景等） |
+| `--prompt <text>` | 是 | 歌词/音乐描述（KIE）或合成文本（MiniMax TTS） |
 | `--config <id>` | 是 | 模型配置 ID（从 `config list --type audio` 获取） |
 | `--node <element_id>` | 否 | 目标节点 ID（省略时自动创建新节点） |
 | `--model <model_key>` | 否 | 模型 key（省略时使用配置中第一个模型） |
-| `--style <style>` | 否 | 音乐风格（如 "电子舞曲"、"古典钢琴"） |
-| `--title <title>` | 否 | 歌曲标题 |
-| `--instrumental` | 否 | 纯音乐模式（无人声，布尔开关，无需值） |
 | `--label <label>` | 否 | 节点标签（自动创建节点时的显示名称） |
+
+**KIE 音乐生成专用参数**：
+
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| `--custom-mode` | 否 | 开启自定义模式（可控制风格、标题、人声性别） |
+| `--style <style>` | 否 | 音乐风格（仅自定义模式，如 "流行"、"摇滚"、"古典"） |
+| `--title <title>` | 否 | 歌曲标题（仅自定义模式，最多 80 字符） |
+| `--instrumental` | 否 | 纯音乐模式（无人声） |
+| `--vocal-gender <m\|f>` | 否 | 人声性别（仅自定义模式，m=男声，f=女声） |
+
+**MiniMax TTS 专用参数**：
+
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| `--voice-id <id>` | 否 | 音色 ID（如 `female-shaonv`，用 `flowcanvas voices minimax` 查询完整列表） |
+| `--emotion <emotion>` | 否 | 情绪：`auto`\|`happy`\|`sad`\|`angry`\|`fearful`\|`disgusted`\|`surprised`\|`neutral`（Speech 2.8/2.6 额外支持 `fluent`\|`whisper`） |
+| `--speed <0.5-2.0>` | 否 | 语速（默认 1.0） |
+| `--vol <0.1-10.0>` | 否 | 音量（默认 1.0） |
+| `--pitch <-12~12>` | 否 | 音调（默认 0） |
+
+> **Agent 行为指导（MiniMax TTS）**：
+> - 使用前先运行 `flowcanvas voices minimax --lang <语言> --pretty` 找到合适的 `voice_id`
+> - 如果用户没有指定音色，可不传 `--voice-id`（后端默认使用 `male-qn-qingse`）
+> - `--emotion` 仅 Speech 系列支持；Speech 2.8/2.6 额外支持 `fluent`（生动）和 `whisper`（低语）

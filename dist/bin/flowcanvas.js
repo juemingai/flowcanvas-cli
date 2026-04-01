@@ -9,6 +9,7 @@ import { registerNodeCommand } from "../src/commands/node.js";
 import { registerEdgeCommand } from "../src/commands/edge.js";
 import { registerConfigCommand } from "../src/commands/config-list.js";
 import { registerGenerateCommand } from "../src/commands/generate.js";
+import { registerVoicesCommand } from "../src/commands/voices.js";
 const require = createRequire(import.meta.url);
 const { version } = require("../../package.json");
 const program = new Command();
@@ -49,6 +50,7 @@ registerNodeCommand(program, clientProxy);
 registerEdgeCommand(program, clientProxy);
 registerConfigCommand(program, clientProxy);
 registerGenerateCommand(program, clientProxy);
+registerVoicesCommand(program);
 program.parseAsync(process.argv).catch((err) => {
     outputError(err.message);
     process.exit(1);
