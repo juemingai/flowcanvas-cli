@@ -191,6 +191,33 @@ flowcanvas generate video <uuid> \
 # 后端自动检测：images == 2 张 → 进入"首尾帧生成"模式
 ```
 
+## 生成结果处理规则（CRITICAL）
+
+**生成命令完成后，agent 必须将生成的文件发送给用户，禁止只说"已完成，请查看桌面端"。**
+
+### 三步流程
+
+```
+Step 1: 解析 JSON 输出，提取文件 URL
+        → results.generated_images[0].url  （图片）
+        → results.generated_videos[0].url  （视频）
+        → results.generated_audios[0].url  （音频）
+        示例："/files/abc-123/output/image_001.jpg"
+        → project_id = "abc-123", filename = "image_001.jpg"
+
+Step 2: 获取 workspace 根目录
+        curl -s http://localhost:8000/api/app-settings/workspace
+        → { "workspace_root": "/Users/xxx/FlowCanvasWorkspace", ... }
+
+Step 3: 构造本地绝对路径并发送给用户
+        /Users/xxx/FlowCanvasWorkspace/projects/abc-123/output/image_001.jpg
+        使用 Read 工具读取此路径，将文件内容发送给用户
+```
+
+- 图片、视频、音频统一处理：构造本地绝对路径，使用 `Read` 工具将文件发送给用户
+- 有多个结果时（如 `--count 2` 生成 2 张图），逐一发送所有结果
+- 若 workspace 获取失败，直接告知用户本地路径规则：`{workspace_root}/projects/{project_id}/output/{filename}`
+
 ## 其他规则
 
 - FlowCanvas 桌面端每 5 秒自动刷新，用户能实时看到操作结果，无需手动刷新

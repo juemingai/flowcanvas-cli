@@ -170,6 +170,39 @@ flowcanvas generate image <uuid> --prompt "..." --config <config_id>
 ✓ Image generation completed! Check FlowCanvas desktop app.
 ```
 
+### 结果处理（Agent 必须执行）
+
+生成完成后，从 JSON 输出中提取本地文件路径并发送给用户：
+
+```bash
+# JSON 输出结构
+# {
+#   "nodeId": "abc-123",
+#   "task_id": "task-xxx",
+#   "status": "completed",
+#   "results": {
+#     "generated_images": [
+#       { "id": "img-1", "url": "/files/abc-123/output/image_001.jpg", "filename": "image_001.jpg" }
+#     ]
+#   }
+# }
+
+# Step 1: 从 url 字段提取 project_id 和 filename
+#   url = "/files/abc-123/output/image_001.jpg"
+#   project_id = "abc-123"，filename = "image_001.jpg"
+
+# Step 2: 获取 workspace 根目录
+curl -s http://localhost:8000/api/app-settings/workspace
+# → { "workspace_root": "/Users/xxx/FlowCanvasWorkspace", ... }
+
+# Step 3: 构造本地绝对路径，使用 Read 工具发送给用户
+# /Users/xxx/FlowCanvasWorkspace/projects/abc-123/output/image_001.jpg
+```
+
+有多张图片时（`generated_images` 数组含多个元素），逐一发送所有结果。
+
+---
+
 ## flowcanvas generate video
 
 生成视频并自动在画布上创建节点、绑定结果。支持三种生成模式：
@@ -220,6 +253,35 @@ flowcanvas generate video <canvas_uuid> \
   --prompt "角色从A姿势变换到B姿势" \
   --config <id>
 ```
+
+### 结果处理（Agent 必须执行）
+
+生成完成后，从 JSON 输出中提取本地文件路径并发送给用户：
+
+```bash
+# JSON 输出结构
+# {
+#   "nodeId": "abc-123",
+#   "status": "completed",
+#   "results": {
+#     "generated_videos": [
+#       { "id": "vid-1", "url": "/files/abc-123/output/video_001.mp4", "filename": "video_001.mp4" }
+#     ]
+#   }
+# }
+
+# Step 1: url = "/files/abc-123/output/video_001.mp4"
+#   project_id = "abc-123"，filename = "video_001.mp4"
+
+# Step 2: 获取 workspace 根目录
+curl -s http://localhost:8000/api/app-settings/workspace
+# → { "workspace_root": "/Users/xxx/FlowCanvasWorkspace", ... }
+
+# Step 3: 构造本地绝对路径，使用 Read 工具发送给用户
+# /Users/xxx/FlowCanvasWorkspace/projects/abc-123/output/video_001.mp4
+```
+
+---
 
 ## flowcanvas voices minimax
 
@@ -298,3 +360,32 @@ flowcanvas generate audio <canvas_uuid> \
 > - 使用前先运行 `flowcanvas voices minimax --lang <语言> --pretty` 找到合适的 `voice_id`
 > - 如果用户没有指定音色，可不传 `--voice-id`（后端默认使用 `male-qn-qingse`）
 > - `--emotion` 仅 Speech 系列支持；Speech 2.8/2.6 额外支持 `fluent`（生动）和 `whisper`（低语）
+
+### 结果处理（Agent 必须执行）
+
+生成完成后，从 JSON 输出中提取本地文件路径并发送给用户：
+
+```bash
+# JSON 输出结构
+# {
+#   "nodeId": "abc-123",
+#   "status": "completed",
+#   "results": {
+#     "generated_audios": [
+#       { "id": "aud-1", "url": "/files/abc-123/output/audio_001.mp3", "filename": "audio_001.mp3" }
+#     ]
+#   }
+# }
+
+# Step 1: url = "/files/abc-123/output/audio_001.mp3"
+#   project_id = "abc-123"，filename = "audio_001.mp3"
+
+# Step 2: 获取 workspace 根目录
+curl -s http://localhost:8000/api/app-settings/workspace
+# → { "workspace_root": "/Users/xxx/FlowCanvasWorkspace", ... }
+
+# Step 3: 构造本地绝对路径，使用 Read 工具发送给用户
+# /Users/xxx/FlowCanvasWorkspace/projects/abc-123/output/audio_001.mp3
+```
+
+KIE 音乐生成可能返回多个音频（`generated_audios` 数组含多个元素），逐一发送所有结果。
