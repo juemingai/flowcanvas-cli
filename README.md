@@ -10,7 +10,7 @@ FlowCanvas 命令行工具，让你和 AI Agent 都能通过终端操作 FlowCan
 
 ### 1. FlowCanvas 桌面端
 
-CLI 需要连接本地运行的 FlowCanvas 桌面端（默认地址 `http://localhost:8000`）。请先启动 FlowCanvas，再执行任何 CLI 命令。
+CLI 需要连接本地运行的 FlowCanvas 桌面端（自动探测地址：桌面端 `http://127.0.0.1:28765`，开发模式 `:8000`）。请先启动 FlowCanvas，再执行任何 CLI 命令。
 
 ### 2. Node.js 22 或更高版本
 
@@ -59,11 +59,11 @@ Skill 是 AI Agent（如 Claude Code）的"操作手册"。安装后，Claude Co
 两步完成后，运行以下命令确认一切正常：
 
 ```bash
-flowcanvas --version   # 应输出当前版本号，如 1.4.2
-flowcanvas health      # 应输出 ✓ FlowCanvas is running（需桌面端已启动）
+flowcanvas --version   # 输出当前版本号
+flowcanvas health      # 输出 {"ok": true, "data": {"status": "ok", ...}}（需桌面端已启动）
 ```
 
-如果 `flowcanvas health` 返回连接失败，请检查 FlowCanvas 桌面端是否已启动。
+如果 `flowcanvas health` 返回 `unreachable`，请检查 FlowCanvas 桌面端是否已启动。
 
 ---
 
@@ -78,178 +78,98 @@ npx skills add juemingai/flowcanvas-cli -y -g
 
 ---
 
+## 与 MCP 的关系
+
+CLI 的每条命令都与 FlowCanvas MCP 的一个工具一一对应（`generate_image` ↔ `flowcanvas generate-image`），
+**能力完全一致**：命令和参数在运行时从 FlowCanvas 后端的 MCP 工具定义动态生成，FlowCanvas 新增或修改工具后
+CLI 自动跟随，无需升级。因此除 `health`、`mcp` 外，其余命令都需要 FlowCanvas 正在运行才能列出和执行。
+
+---
+
 ## 快速开始
 
 ```bash
-# 列出所有画布
-flowcanvas canvas list
-
-# 查看某个画布的节点（将 <uuid> 替换为上一步列出的 UUID）
-flowcanvas canvas get <uuid>
-
-# 查看可用的 AI 模型配置
-flowcanvas config list --type image
-
-# 一步生成图片（将 <uuid> 和 <config_id> 替换为你自己的值）
-flowcanvas generate image <uuid> --prompt "赛博朋克城市夜景" --config <config_id>
+flowcanvas tools                                   # 列出全部命令
+flowcanvas list-canvases                           # 列出画布
+flowcanvas get-canvas --canvas-id <canvas_id>      # 查看画布内的节点与连线
+flowcanvas list-configs --model-type image         # 查看可用的图片模型配置
+flowcanvas generate-image --canvas-id <canvas_id> --prompt "赛博朋克城市夜景" \
+  --config-id <config_id> --wait                   # 生成图片并等待结果
 ```
 
-> CLI 操作完成后，FlowCanvas 桌面端会在 5 秒内自动刷新，无需手动操作。
+> 用户若正打开同一画布，改动会在数秒内同步显示，无需手动刷新。
 
 ---
 
 ## 命令参考
 
+完整命令以 `flowcanvas tools` 为准，参数以 `flowcanvas <command> --help` 为准（内容来自后端工具定义）。
+
+### 固定命令
+
+| 命令 | 说明 |
+|------|------|
+| `flowcanvas health` | 检查 FlowCanvas 是否运行 |
+| `flowcanvas tools` | 列出全部工具命令 |
+| `flowcanvas call <tool> --json '{...}'` | 按 MCP 工具原名调用 |
+| `flowcanvas mcp` | stdio MCP 桥接（见下文） |
+
 ### 全局选项
 
 | 选项 | 说明 |
 |------|------|
-| `--pretty` | 人类可读格式输出（表格+颜色），默认为 JSON 格式 |
-| `--server <url>` | FlowCanvas 地址（默认 `http://localhost:8000`） |
+| `--pretty` | 人类可读格式输出，默认为 JSON（`{"ok": true, "data": ...}`） |
+| `--server <url>` | FlowCanvas 地址（默认自动探测：`FLOWCANVAS_API_BASE` → `~/.flowcanvas/runtime.json` → `:28765` → `:8000`） |
+
+### 参数写法
+
+| 参数类型 | 写法 |
+|------|------|
+| 字符串 / 数字 | `--canvas-id abc`、`--count 2`（参数名 snake_case 转 kebab-case） |
+| 布尔 | `--include-schema` / `--no-include-schema` |
+| 列表 | 重复传入：`--reference-node-ids a --reference-node-ids b` |
+| 对象 / 复杂列表 | JSON 字符串：`--extra-params '{"voiceId":"female-shaonv"}'` |
+| 全部参数 | `--json '{"canvas_id":"...","prompt":"..."}'`（单独给出的参数优先） |
+
+### 生成与等待
+
+生成类命令（`generate-image` / `generate-video` / `generate-audio` / `generate-text` / `regenerate-node`）
+**默认不阻塞**，立即返回 `node_id`，结果在后台完成后写回画布：
+
+- 加 `--wait` 等待完成并直接返回结果（含本机文件路径 `local_path`），`--wait-timeout <秒>` 调整最长等待（默认 1800）
+- 或之后运行 `flowcanvas wait-for-nodes --canvas-id <id> --node-ids <node_id>`
 
 ---
 
-### health
+## 常用工作流
 
 ```bash
-flowcanvas health
-```
+# 图生视频：以已有图片节点为参考（自动连线）
+flowcanvas generate-video --canvas-id <id> --prompt "城市漫游镜头" \
+  --config-id <video_config_id> --reference-node-ids <image_node_id> --wait
 
-检查 FlowCanvas 桌面端是否运行。
+# 首尾帧视频：两个图片节点依次为首帧、尾帧
+flowcanvas generate-video --canvas-id <id> --prompt "从 A 姿势变换到 B 姿势" --video-mode sef \
+  --config-id <video_config_id> --reference-node-ids <first_id> --reference-node-ids <last_id> --wait
 
----
+# 多图融合
+flowcanvas generate-image --canvas-id <id> --prompt "融合两个角色风格" \
+  --config-id <image_config_id> --reference-node-ids <id1> --reference-node-ids <id2> --wait
 
-### canvas
-
-```bash
-flowcanvas canvas list                   # 列出所有画布
-flowcanvas canvas create <name>          # 创建画布（必须命名）
-flowcanvas canvas get <uuid>             # 查看画布内所有节点
-```
-
----
-
-### config
-
-```bash
-flowcanvas config list                   # 列出所有模型配置
-flowcanvas config list --type image      # 按类型筛选（image / video / audio）
-flowcanvas config params <config_id>     # 查看某模型支持的参数和合法值
-```
-
----
-
-### generate
-
-所有 `generate` 命令均**自动等待生成完成**（最长 10 分钟），省略 `--node` 时**自动创建节点**并绑定结果。
-
-#### generate image
-
-```bash
-flowcanvas generate image <canvas_uuid> \
-  --prompt "赛博朋克城市夜景" \
-  --config <config_id> \
-  [--model <model_key>]
-  [--aspect-ratio <ratio>]       # 宽高比，合法值通过 config params 查看（如 1:1, 16:9）
-  [--resolution <res>]           # 分辨率，合法值通过 config params 查看（如 1K, 2K, 4K）
-  [--count 1|2|4]                # 生成数量，并非所有模型支持
-  [--from <image_node_id>]       # 参考图节点 ID（可多次传入，实现多图融合）
-  [--node <element_id>]          # 省略则自动创建节点
-  [--label <label>]              # 节点显示名称
-```
-
-#### generate video
-
-```bash
-flowcanvas generate video <canvas_uuid> \
-  --config <config_id> \
-  [--prompt "城市漫游镜头"]
-  [--from <image_node_id>]       # 图生视频：以指定节点的图片为首帧
-  [--last-frame <image_node_id>] # 首尾帧视频：与 --from 配合使用
-  [--duration <seconds>]         # 视频时长（秒）
-  [--resolution <res>]           # 合法值通过 config params 查看
-  [--ratio <ratio>]              # 宽高比，合法值通过 config params 查看
-  [--node <element_id>]          # 省略则自动创建节点
-  [--label <label>]              # 节点显示名称
-```
-
-#### generate audio
-
-```bash
-flowcanvas generate audio <canvas_uuid> \
-  --prompt "欢快的电子舞曲" \
-  --config <config_id> \
-  [--model <model_key>]
-  [--style <style>]              # 音乐风格
-  [--title <title>]              # 歌曲标题
-  [--instrumental]               # 纯音乐（无人声）
-  [--node <element_id>]          # 省略则自动创建节点
-  [--label <label>]              # 节点显示名称
+# MiniMax TTS：先查音色 ID
+flowcanvas list-voices --lang 中文 --pretty
+flowcanvas generate-audio --canvas-id <id> --prompt "欢迎使用 FlowCanvas" --scene tts \
+  --config-id <audio_config_id> --extra-params '{"voiceId":"female-shaonv","emotion":"happy"}' --wait
 ```
 
 ---
 
-### node
+## MCP 桥接（Claude Desktop 等仅支持 stdio 的客户端）
 
-```bash
-flowcanvas node add <uuid> <type>                            # 添加空节点（自动定位）
-flowcanvas node add <uuid> <type> --from <source_node_id>   # 添加节点并连接到来源节点
-flowcanvas node delete <uuid> <element_id>                  # 删除节点（同时删除关联连线）
+`flowcanvas mcp` 把 stdio 转发到 FlowCanvas 后端的 MCP 服务（`/mcp`），工具全部来自后端：
+
+```json
+{ "mcpServers": { "flowcanvas": { "command": "npx", "args": ["-y", "@flowcanvas/cli", "mcp"] } } }
 ```
 
-**节点类型**：`image-generation` / `video-generation` / `audio-generation` / `text`
-
----
-
-### edge
-
-```bash
-flowcanvas edge add <uuid> <source_id> <target_id>   # 连接两个已有节点
-```
-
----
-
-## 核心工作流
-
-### 文生图（1 步）
-
-```bash
-flowcanvas generate image <uuid> --prompt "..." --config <id>
-```
-
-### 图生视频（2 步）
-
-```bash
-# Step 1：生成图片，获取节点 ID
-flowcanvas generate image <uuid> --prompt "..." --config <img_config_id>
-# 输出示例：{ "nodeId": "abc-123", "status": "completed", ... }
-
-# Step 2：以图片为首帧生成视频
-flowcanvas generate video <uuid> --from abc-123 --config <vid_config_id>
-```
-
-### 首尾帧视频（指定起止画面）
-
-```bash
-flowcanvas generate video <uuid> \
-  --from <first_frame_node_id> \
-  --last-frame <last_frame_node_id> \
-  --prompt "角色从 A 姿势变换到 B 姿势" \
-  --config <vid_config_id>
-```
-
-### 多图融合（多张参考图 → 新图片）
-
-```bash
-flowcanvas generate image <uuid> \
-  --from <image_node_id_1> \
-  --from <image_node_id_2> \
-  --prompt "融合两个角色风格" \
-  --config <img_config_id>
-```
-
-### 文生音频（1 步）
-
-```bash
-flowcanvas generate audio <uuid> --prompt "欢快的电子舞曲" --config <audio_config_id>
-```
+支持 HTTP 的客户端（Claude Code、Codex、Cursor）可直接连 `http://127.0.0.1:28765/mcp`。详见 FlowCanvas 设置页「MCP 接入」。

@@ -1,57 +1,74 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { createRequire } from "module";
-import { FlowCanvasClient } from "../src/client.js";
 import { setJsonMode, outputError } from "../src/output.js";
 import { registerHealthCommand } from "../src/commands/health.js";
-import { registerCanvasCommand } from "../src/commands/canvas.js";
-import { registerNodeCommand } from "../src/commands/node.js";
-import { registerEdgeCommand } from "../src/commands/edge.js";
-import { registerConfigCommand } from "../src/commands/config-list.js";
-import { registerGenerateCommand } from "../src/commands/generate.js";
-import { registerVoicesCommand } from "../src/commands/voices.js";
+import { registerMcpCommand } from "../src/commands/mcp.js";
+import { registerToolCommands } from "../src/commands/tools.js";
+import { connectMcp, listTools, NOT_RUNNING } from "../src/mcpClient.js";
+import { resolveServerUrl } from "../src/server.js";
 const require = createRequire(import.meta.url);
 const { version } = require("../../package.json");
-const program = new Command();
-// Use a lazy-initialized client so --server flag is resolved before use
-let _client = null;
-function getClient() {
-    if (!_client) {
-        const opts = program.opts();
-        _client = new FlowCanvasClient(opts.server);
+/** 不需要连接 MCP 的命令（mcp 桥接自行懒连接，FlowCanvas 可能晚于客户端启动） */
+const OFFLINE_COMMANDS = new Set(["mcp", "health"]);
+/** commander 解析前预扫 argv：工具命令要先连 MCP 拿到工具列表才能注册 */
+function scanArgv(argv) {
+    let server;
+    let command;
+    let pretty = false;
+    for (let i = 0; i < argv.length; i++) {
+        const a = argv[i];
+        if (a === "--server")
+            server = argv[++i];
+        else if (a.startsWith("--server="))
+            server = a.slice("--server=".length);
+        else if (a === "--pretty")
+            pretty = true;
+        else if (!command && !a.startsWith("-"))
+            command = a;
     }
-    return _client;
+    return { server, command, pretty };
 }
-// Proxy that creates the client on first property access
-const clientProxy = new Proxy({}, {
-    get(_target, prop) {
-        const real = getClient();
-        const value = real[prop];
-        if (typeof value === "function") {
-            return value.bind(real);
-        }
-        return value;
-    },
-});
-program
-    .name("flowcanvas")
-    .description("FlowCanvas CLI — operate FlowCanvas canvases from the command line")
-    .version(version)
-    .option("--pretty", "Output in human-readable format (tables and colors)")
-    .option("--server <url>", "FlowCanvas server URL", "http://localhost:8000")
-    .hook("preAction", (thisCommand) => {
-    const opts = thisCommand.opts();
-    if (opts.pretty)
+async function main() {
+    const { server, command, pretty } = scanArgv(process.argv.slice(2));
+    if (pretty)
         setJsonMode(false);
-});
-registerHealthCommand(program, clientProxy);
-registerCanvasCommand(program, clientProxy);
-registerNodeCommand(program, clientProxy);
-registerEdgeCommand(program, clientProxy);
-registerConfigCommand(program, clientProxy);
-registerGenerateCommand(program, clientProxy);
-registerVoicesCommand(program);
-program.parseAsync(process.argv).catch((err) => {
+    const program = new Command();
+    program
+        .name("flowcanvas")
+        .description("FlowCanvas CLI — 命令与 FlowCanvas MCP 工具一一对应（flowcanvas tools 查看全部）。" +
+        "Every command maps 1:1 to a FlowCanvas MCP tool.")
+        .version(version)
+        .option("--pretty", "Output in human-readable format")
+        .option("--server <url>", "FlowCanvas server URL (default: auto-detect via FLOWCANVAS_API_BASE, ~/.flowcanvas/runtime.json, :28765, :8000)");
+    registerHealthCommand(program, () => resolveServerUrl(server));
+    registerMcpCommand(program);
+    let client = null;
+    if (!command || !OFFLINE_COMMANDS.has(command)) {
+        const base = await resolveServerUrl(server);
+        try {
+            client = await connectMcp(base, version);
+            registerToolCommands(program, client, await listTools(client));
+        }
+        catch (err) {
+            await client?.close().catch(() => { });
+            client = null;
+            const reason = `${NOT_RUNNING} (${base}: ${err.message})`;
+            if (command && command !== "help") {
+                outputError(reason);
+                process.exit(1);
+            }
+            program.addHelpText("after", `\n${reason}\n工具命令需在 FlowCanvas 运行时才能列出。\n`);
+        }
+    }
+    try {
+        await program.parseAsync(process.argv);
+    }
+    finally {
+        await client?.close().catch(() => { });
+    }
+}
+main().catch((err) => {
     outputError(err.message);
     process.exit(1);
 });

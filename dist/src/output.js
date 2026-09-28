@@ -10,6 +10,15 @@ export function isJsonMode() {
 export function outputJson(data) {
     console.log(JSON.stringify({ ok: true, data }, null, 2));
 }
+/** 工具结果：JSON 模式带 {ok, data} 信封；--pretty 模式直接缩进打印 */
+export function outputData(data) {
+    if (jsonMode) {
+        outputJson(data);
+    }
+    else {
+        console.log(typeof data === "string" ? data : JSON.stringify(data, null, 2));
+    }
+}
 export function outputTable(headers, rows) {
     const table = new Table({ head: headers.map((h) => chalk.cyan(h)) });
     for (const row of rows) {

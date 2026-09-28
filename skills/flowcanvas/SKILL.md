@@ -1,227 +1,73 @@
 ---
 name: flowcanvas
-version: 1.3.0
-description: "FlowCanvas 画布操作：管理画布、添加/连接/删除节点、触发 AI 图片/视频/音频生成。需要本地运行 FlowCanvas 桌面端（localhost:8000）。核心场景包括：创建画布并组织 AI 生成工作流、在画布上添加节点并建立连接、批量生成图片/视频/音频内容。当用户提到 FlowCanvas、画布操作、AI 生图/视频/音频生成时触发。"
+version: 2.0.0
+description: "FlowCanvas 画布操作：管理画布与节点、连线、触发 AI 图片/视频/音频/文本生成、查看与处理生成结果。需要本地运行 FlowCanvas 桌面端（自动探测端口）。当用户提到 FlowCanvas、画布操作、AI 生图/视频/音频生成时触发。"
 metadata:
   requires:
     bins: ["flowcanvas"]
-  cliHelp: "flowcanvas --help"
+  cliHelp: "flowcanvas tools"
 ---
 
 # FlowCanvas 画布操作
 
-本技能指导你如何通过 `flowcanvas` CLI 操作 FlowCanvas 画布，管理节点和连接，以及触发 AI 图片/视频/音频生成。
-
-**CRITICAL — 执行生成命令前，务必先使用 Read 工具读取 [flowcanvas-generate.md](references/flowcanvas-generate.md) 了解参数说明，禁止盲目猜测参数值。**
-
-## 快捷方式（Shortcuts）
-
-优先使用以下快捷入口，覆盖 90% 的常用场景：
-
-| Shortcut | 说明 |
-|----------|------|
-| [`+generate-image`](references/flowcanvas-generate.md#flowcanvas-generate-image) | 文生图、参考图生图、多图融合 |
-| [`+generate-video`](references/flowcanvas-generate.md#flowcanvas-generate-video) | 文生视频、图生视频、首尾帧视频 |
-| [`+generate-audio`](references/flowcanvas-generate.md#flowcanvas-generate-audio) | 文生音频 |
-
-## 前置条件
-
-- FlowCanvas 桌面端需要运行（默认 localhost:8000）
-- 首次使用先运行 `flowcanvas health` 确认连接
+`flowcanvas` CLI 的每条命令都与 FlowCanvas MCP 的一个工具一一对应（工具名 `generate_image` ↔ 命令
+`flowcanvas generate-image`），能力完全一致。命令和参数来自正在运行的 FlowCanvas，**不要凭记忆写参数**：
 
 ```bash
-flowcanvas health
+flowcanvas health                    # 确认 FlowCanvas 正在运行
+flowcanvas tools                     # 列出全部命令（类型：read / write / destructive / generate）
+flowcanvas <command> --help          # 查看某条命令的参数、取值范围与详细说明
 ```
 
-## 画布选择规则（CRITICAL）
+## 参数写法
 
-**规则 1：未指定画布时，必须询问用户**
-- 运行 `flowcanvas canvas list` 获取列表
-- 展示给用户：名称 + 最近修改时间 + 节点数
-- 询问用户选择哪个，或是否新建
-- ❌ 禁止静默使用最近的画布或自动新建
+- 参数名 snake_case → `--kebab-case`：`canvas_id` → `--canvas-id`
+- 布尔：`--include-schema` / `--no-include-schema`
+- 列表：重复传入 `--node-ids a --node-ids b`
+- 对象 / 复杂列表：传 JSON 字符串 `--extra-params '{"voiceId":"female-shaonv"}'`
+- 也可一次性传全部参数：`--json '{"canvas_id":"...","prompt":"..."}'`，或按工具原名调用 `flowcanvas call generate_image --json '{...}'`
+- 默认输出 JSON：`{"ok": true, "data": ...}`；失败时 `{"ok": false, "error": {...}}` 且退出码非 0；`--pretty` 为人类可读格式
 
-**规则 2：用户提到画布名称时，先模糊匹配**
-- 运行 `flowcanvas canvas list` 获取列表
-- 按名称模糊搜索
-- 找到唯一匹配 → 直接使用，无需确认
-- 找到多个匹配 → 列出让用户选
-- 未找到 → 告知用户并展示完整列表
-
-**规则 3：新建画布必须命名**
-- 创建前必须明确问用户："您想给这个画布起什么名字？"
-- ❌ 禁止使用 "Untitled Canvas" 或任何默认名称
-
-> **AI 行为指导：**
-> - **自动决策**：用户说了画布名且唯一匹配时，无需再次确认，直接使用
-> - **必须询问**：画布未指定、多个匹配、或要新建时，必须先问用户
-> - **参数合法性**：`--aspect-ratio`、`--resolution` 等参数值因模型而异，必须先运行 `flowcanvas config params <config_id>` 获取合法值，禁止凭感觉填写
-
-## 核心概念
-
-- **画布（Canvas）**：节点的容器。每个画布有唯一 UUID，包含多个节点和连接。
-- **节点（Node/Element）**：画布上的单个元素，包含类型、位置、生成状态等属性。支持的类型：`image-generation`、`video-generation`、`audio-generation`、`text`。
-- **连接（Edge）**：两个节点之间的有向连接线，表示数据流向（如图片节点 → 视频节点，表示图生视频）。
-- **模型配置（Config）**：用户在 FlowCanvas 设置中配置的 AI 模型和 API Key，每个配置有唯一 ID。
-
-## 资源关系
-
-```
-Canvas (画布)
-├── Element (节点)
-│   ├── type: image-generation / video-generation / audio-generation / text
-│   ├── generationState: idle / generating / completed / failed
-│   └── results: 生成结果列表
-└── Edge (连接)
-    ├── sourceId → 源节点
-    └── targetId → 目标节点
-```
-
-## 命令一览
-
-| 命令 | 说明 | 参考文档 |
-|------|------|---------|
-| `flowcanvas health` | 检查 FlowCanvas 是否运行 | [flowcanvas-canvas](references/flowcanvas-canvas.md) |
-| `flowcanvas canvas list` | 列出所有画布 | [flowcanvas-canvas](references/flowcanvas-canvas.md) |
-| `flowcanvas canvas create <name>` | 创建新画布 | [flowcanvas-canvas](references/flowcanvas-canvas.md) |
-| `flowcanvas canvas get <uuid>` | 查看画布内所有节点 | [flowcanvas-canvas](references/flowcanvas-canvas.md) |
-| `flowcanvas node add <uuid> <type>` | 添加节点 | [flowcanvas-node](references/flowcanvas-node.md) |
-| `flowcanvas node delete <uuid> <id>` | 删除节点 | [flowcanvas-node](references/flowcanvas-node.md) |
-| `flowcanvas edge add <uuid> <src> <tgt>` | 连接两个节点 | [flowcanvas-node](references/flowcanvas-node.md) |
-| `flowcanvas config list` | 列出可用模型配置 | [flowcanvas-generate](references/flowcanvas-generate.md) |
-| `flowcanvas config params <config_id>` | 查看模型支持的参数选项 | [flowcanvas-generate](references/flowcanvas-generate.md) |
-| `flowcanvas generate image <uuid>` | 生成图片 | [flowcanvas-generate](references/flowcanvas-generate.md) |
-| `flowcanvas generate video <uuid>` | 生成视频 | [flowcanvas-generate](references/flowcanvas-generate.md) |
-| `flowcanvas generate audio <uuid>` | 生成音频 | [flowcanvas-generate](references/flowcanvas-generate.md) |
-| `flowcanvas voices minimax` | 查看 MiniMax 系统音色 ID 列表 | [flowcanvas-generate](references/flowcanvas-generate.md) |
-
-**何时用 `generate` vs `node add + generate`：**
-- ✅ **大多数场景**：直接用 `generate` — 自动创建节点 + 生成 + 绑定结果，一步完成
-- ✅ **链式工作流**：`generate image` 获取 `nodeId`（默认 JSON 输出），再 `generate video --from <nodeId>`
-- ⚙️ **需要预先规划画布结构**：先用 `node add` 手动建多个空节点，再逐一调用 `generate --node <id>` 绑定到指定节点
-
-## 全局选项
-
-| 选项 | 说明 |
-|------|------|
-| `--pretty` | 人类可读格式输出（表格+颜色），默认为 JSON 格式 |
-| `--server <url>` | FlowCanvas 地址（默认 `http://localhost:8000`） |
-
-## 核心场景
-
-### 1. 图片生成（一步完成）
+## 典型流程
 
 ```bash
-# 1. 确认目标画布
-flowcanvas canvas list
+# 1. 确定画布
+flowcanvas list-canvases
+flowcanvas get-canvas --canvas-id <canvas_id>
 
-# 2. 查看可用图片模型配置
-flowcanvas config list --type image
+# 2. 生成前先取真实的 config_id / model_key 与参数取值（不要凭记忆填写）
+flowcanvas list-configs --model-type image
 
-# 3. 查看模型支持的参数，了解合法参数值（如 aspect_ratio、resolution 的可选值）
-flowcanvas config params <config_id>
+# 3. 生成（非阻塞，立即返回 node_id）；加 --wait 等待完成并直接返回结果
+flowcanvas generate-image --canvas-id <canvas_id> --prompt "赛博朋克城市夜景" \
+  --config-id <config_id> --model-key <model_key> --wait
 
-# 4. 一步生成（自动创建节点 + 生成 + 绑定结果，桌面端自动刷新）
-flowcanvas generate image <uuid> --prompt "赛博朋克城市夜景" --config <config_id>
+# 4. 以已有节点为参考继续生成（自动连线）：图生视频、多图融合、首尾帧（--video-mode sef）等
+flowcanvas generate-video --canvas-id <canvas_id> --prompt "城市漫游镜头" \
+  --config-id <config_id> --reference-node-ids <image_node_id> --wait
+
+# 5. 未加 --wait 或等待超时：继续等待，不要重复调用生成命令
+flowcanvas wait-for-nodes --canvas-id <canvas_id> --node-ids <node_id>
 ```
 
-### 2. 图片→视频工作流（两步）
+TTS 音色：`flowcanvas list-voices` 查看语言分组，`flowcanvas list-voices --lang 中文` 查看音色 ID，
+再通过 `generate-audio --scene tts --extra-params '{"voiceId":"..."}'` 使用。
 
-```bash
-# Step 1: 生成图片（自动创建节点），默认 JSON 输出含 nodeId
-flowcanvas generate image <uuid> --prompt "赛博朋克城市" --config <image_config_id>
-# 输出示例: { "nodeId": "abc-123", "status": "completed", ... }
+## 画布选择规则
 
-# Step 2: 用 --from 一步完成图生视频（自动创建视频节点 + 连接 + 生成）
-flowcanvas generate video <uuid> --from <nodeId> --prompt "城市漫游镜头" --config <video_config_id>
-```
+1. **未指定画布时必须询问用户**：运行 `list-canvases`，展示名称、最近修改时间、节点数，让用户选择或新建。禁止静默使用最近的画布或自动新建。
+2. **用户提到画布名称时先模糊匹配**：唯一匹配直接使用；多个匹配列出让用户选；未找到则告知并展示完整列表。
+3. **新建画布必须命名**：创建前先问用户名称，禁止使用 "Untitled Canvas" 等默认名。
 
-### 3. 音频生成
+## 生成结果处理
 
-```bash
-# KIE 音乐生成
-flowcanvas generate audio <uuid> --prompt "欢快的电子舞曲" --config <audio_config_id>
+生成完成后把文件发给用户，而不只是说"已完成，请查看桌面端"——用户可能不在桌面端前。
 
-# MiniMax TTS（先查音色 ID）
-flowcanvas voices minimax --lang 中文 --pretty
-flowcanvas generate audio <uuid> --prompt "欢迎使用 FlowCanvas" --config <audio_config_id> \
-  --voice-id female-shaonv --emotion happy
-```
+- `wait-for-nodes`（或 `--wait`）的结果里每个产物都带 `local_path`（本机绝对路径），直接读取该文件发送给用户；多个结果逐一发送。
+- 查看图片效果可用 `flowcanvas view-image --canvas-id <id> --node-id <id>`，输出的 `image_path` 是缩略图文件路径。
 
-### 4. 分步手动控制（高级用法）
+## 其他
 
-如需先规划画布结构再生成，可使用底层命令：
-
-```bash
-# 添加空节点
-flowcanvas node add <uuid> image-generation
-
-# 查看节点 ID
-flowcanvas canvas get <uuid>
-
-# 连接节点
-flowcanvas edge add <uuid> <image_id> <video_id>
-
-# 生成并绑定到指定节点
-flowcanvas generate image <uuid> --node <element_id> --prompt "..." --config <id>
-```
-
-### 5. 多图融合（多个图片节点 → 新图片节点）
-
-```bash
-# 多次传入 --from，自动创建目标节点 + 连接 + 以多图融合模式生成
-flowcanvas generate image <uuid> \
-  --from <image_node_id_1> \
-  --from <image_node_id_2> \
-  --prompt "融合两个角色风格" \
-  --config <config_id>
-# 后端自动检测：images >= 2 张 → 进入"多图融合"模式
-```
-
-### 6. 首尾帧视频（两个图片节点 → 视频节点）
-
-```bash
-# --from 指定首帧节点，--last-frame 指定尾帧节点
-# 自动创建视频节点 + 连接两个源节点 + 以首尾帧模式生成
-flowcanvas generate video <uuid> \
-  --from <first_frame_node_id> \
-  --last-frame <last_frame_node_id> \
-  --prompt "角色从A姿势变换到B姿势" \
-  --config <config_id>
-# 后端自动检测：images == 2 张 → 进入"首尾帧生成"模式
-```
-
-## 生成结果处理规则（CRITICAL）
-
-**生成命令完成后，agent 必须将生成的文件发送给用户，禁止只说"已完成，请查看桌面端"。**
-
-### 三步流程
-
-```
-Step 1: 解析 JSON 输出，提取文件 URL
-        → results.generated_images[0].url  （图片）
-        → results.generated_videos[0].url  （视频）
-        → results.generated_audios[0].url  （音频）
-        示例："/files/abc-123/output/image_001.jpg"
-        → project_id = "abc-123", filename = "image_001.jpg"
-
-Step 2: 获取 workspace 根目录
-        curl -s http://localhost:8000/api/app-settings/workspace
-        → { "workspace_root": "/Users/xxx/FlowCanvasWorkspace", ... }
-
-Step 3: 构造本地绝对路径并发送给用户
-        /Users/xxx/FlowCanvasWorkspace/projects/abc-123/output/image_001.jpg
-        使用 Read 工具读取此路径，将文件内容发送给用户
-```
-
-- 图片、视频、音频统一处理：构造本地绝对路径，使用 `Read` 工具将文件发送给用户
-- 有多个结果时（如 `--count 2` 生成 2 张图），逐一发送所有结果
-- 若 workspace 获取失败，直接告知用户本地路径规则：`{workspace_root}/projects/{project_id}/output/{filename}`
-
-## 其他规则
-
-- FlowCanvas 桌面端每 5 秒自动刷新，用户能实时看到操作结果，无需手动刷新
-- FlowCanvas 未启动时 CLI 会返回友好错误，提示用户先启动桌面端
-- 操作前建议用 `flowcanvas canvas get <uuid>` 确认画布当前状态
-- `generate` 命令会自动等待生成完成（最长 10 分钟），无需手动轮询
-- 默认 JSON 输出结果包含 `nodeId` 字段，方便链式调用
+- 用户若正打开同一画布，改动会在数秒内同步显示，无需手动刷新。
+- FlowCanvas 未启动时命令会返回错误并提示先启动桌面端。
+- `--server <url>` 可指定地址；默认自动探测：`FLOWCANVAS_API_BASE` → `~/.flowcanvas/runtime.json` → `:28765` → `:8000`。
